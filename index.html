@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0d0d10">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FENDY · Boletería</title>
+<style>
+  :root{
+    --bg:#0d0d10; --card:#17171c; --card2:#1e1e25; --line:#2a2a33;
+    --txt:#f2f2f5; --dim:#9a9aa5;
+    --free:#22c55e; --freebg:#0d2a18;
+    --sinrec:#38bdf8; --sinrecbg:#0b2231;
+    --ext:#a78bfa; --extbg:#1e1633;
+    --pago:#fbbf24; --pagobg:#2b2108;
+    --ok:#22c55e; --accent:#e11d48;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  body{background:var(--bg); color:var(--txt); font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; padding-bottom:92px;}
+  .hide{display:none!important;}
+  header{position:sticky; top:0; z-index:20; background:var(--bg); border-bottom:1px solid var(--line); padding:9px 14px;}
+  .brand{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .brand h1{font-size:16px; letter-spacing:2px; font-weight:800;}
+  .brand h1 span{color:var(--accent);}
+  .evento{font-size:11px; color:var(--dim); margin-top:1px;}
+  .quien{display:flex; align-items:center; gap:5px; background:var(--card2); border:1px solid var(--line); border-radius:999px; padding:4px 5px 4px 11px; font-size:12px; font-weight:700; white-space:nowrap;}
+  .quien small{color:var(--dim); font-weight:600;}
+  .quien button{background:none; border:none; color:var(--dim); cursor:pointer; font-size:14px; padding:2px 5px;}
+  nav{position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--card); border-top:1px solid var(--line); z-index:30;}
+  nav button{flex:1; background:none; border:none; color:var(--dim); font-size:13px; font-weight:700; padding:12px 0 max(12px, env(safe-area-inset-bottom)); cursor:pointer;}
+  nav button.act{color:var(--txt); border-top:3px solid var(--accent); margin-top:-1px;}
+  main{padding:14px; max-width:640px; margin:0 auto;}
+  label{display:block; font-size:12px; font-weight:700; color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin:14px 0 6px;}
+  input[type=text],input[type=search],input[type=email],input[type=password],textarea{
+    width:100%; background:var(--card); border:1px solid var(--line); border-radius:12px; color:var(--txt);
+    font-size:17px; padding:13px 14px; outline:none; font-family:inherit;}
+  input:focus,textarea:focus{border-color:var(--accent);}
+  textarea{line-height:1.5; resize:vertical;}
+  .ayuda{font-size:12px; color:var(--dim); margin-top:6px; line-height:1.45;}
+  .chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{border:1px solid var(--line); background:var(--card); color:var(--txt); border-radius:999px; padding:10px 16px; font-size:15px; font-weight:700; cursor:pointer;}
+  .chip.free.sel{background:var(--freebg); border-color:var(--free); color:var(--free);}
+  .chip.sinrec.sel{background:var(--sinrecbg); border-color:var(--sinrec); color:var(--sinrec);}
+  .chip.ext.sel{background:var(--extbg); border-color:var(--ext); color:var(--ext);}
+  .chip.pago.sel{background:var(--pagobg); border-color:var(--pago); color:var(--pago);}
+  .modo{display:flex; gap:8px; background:var(--card2); padding:4px; border-radius:12px;}
+  .modoBtn{flex:1; background:none; border:none; color:var(--dim); font-size:14px; font-weight:700; padding:10px; border-radius:9px; cursor:pointer;}
+  .modoBtn.act{background:var(--accent); color:#fff;}
+  .stepRow{display:flex; align-items:center; gap:12px;}
+  .stepBtn{width:50px; height:50px; border-radius:14px; border:1px solid var(--line); background:var(--card); color:var(--txt); font-size:25px; font-weight:800; cursor:pointer;}
+  .num{font-size:28px; font-weight:800; min-width:40px; text-align:center;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .btnMain{width:100%; margin-top:20px; background:var(--accent); border:none; color:#fff; font-size:18px; font-weight:800; padding:16px; border-radius:14px; cursor:pointer; letter-spacing:1px;}
+  .btnMain:disabled{opacity:.45;}
+  .resumen{margin-top:10px; text-align:center; color:var(--dim); font-size:14px; min-height:20px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:10px;}
+  .card.in{opacity:.45;}
+  .cardTop{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .nombre{font-size:18px; font-weight:800; word-break:break-word;}
+  .meta{font-size:12px; color:var(--dim); margin-top:2px;}
+  .badges{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .badge{font-size:13px; font-weight:800; border-radius:8px; padding:4px 9px;}
+  .b-free{background:var(--freebg); color:var(--free); border:1px solid var(--free);}
+  .b-sinrec{background:var(--sinrecbg); color:var(--sinrec); border:1px solid var(--sinrec);}
+  .b-ext{background:var(--extbg); color:var(--ext); border:1px solid var(--ext);}
+  .b-pago{background:var(--pagobg); color:var(--pago); border:1px solid var(--pago);}
+  .b-grupo{background:#20202a; color:#c9c9d4; border:1px solid var(--line);}
+  .nota{margin-top:8px; font-size:14px; color:#d8d8e0; background:var(--card2); border-radius:8px; padding:6px 10px;}
+  .acciones{display:flex; gap:8px; margin-top:10px;}
+  .btnIn{flex:1; background:var(--ok); border:none; color:#052e12; font-weight:800; font-size:16px; padding:13px; border-radius:10px; cursor:pointer;}
+  .btnUndo{flex:1; background:var(--card2); border:1px solid var(--line); color:var(--dim); font-weight:700; font-size:14px; padding:13px; border-radius:10px; cursor:pointer;}
+  .btnDel{background:none; border:none; color:var(--dim); font-size:18px; cursor:pointer; padding:4px 8px;}
+  .cont{display:flex; align-items:center; gap:8px; margin-top:10px; background:var(--card2); border-radius:12px; padding:8px 8px 8px 12px; border-left:4px solid var(--line);}
+  .cont.b-free{border-left-color:var(--free);} .cont.b-sinrec{border-left-color:var(--sinrec);}
+  .cont.b-ext{border-left-color:var(--ext);}   .cont.b-pago{border-left-color:var(--pago);}
+  .contInfo{flex:1; min-width:0;}
+  .contLbl{font-size:12px; font-weight:800; color:var(--dim); letter-spacing:.5px;}
+  .contNum{font-size:15px; margin-top:2px;}
+  .contNum b{font-size:22px; font-weight:800;}
+  .contNum span{color:var(--dim); font-size:13px;}
+  .contBtn{border:none; border-radius:10px; font-weight:800; cursor:pointer;}
+  .contBtn.mas{background:var(--ok); color:#052e12; font-size:17px; padding:14px 18px;}
+  .contBtn.menos{background:var(--card); color:var(--dim); border:1px solid var(--line); font-size:20px; padding:12px 15px;}
+  .contBtn:disabled{opacity:.25;}
+  .btnTodos{width:100%; margin-top:8px; background:none; border:1px dashed var(--line); color:var(--dim); font-size:13px; font-weight:700; padding:10px; border-radius:10px; cursor:pointer;}
+  .pill{background:var(--card2); border:1px solid var(--line); color:var(--dim); font-size:13px; font-weight:800; padding:5px 10px; border-radius:999px; white-space:nowrap;}
+  .pill.ok{background:var(--freebg); border-color:var(--free); color:var(--free);}
+  .tot{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px;}
+  .totBox{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 4px; text-align:center;}
+  .totBox b{display:block; font-size:22px;}
+  .totBox span{font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px;}
+  .searchWrap{position:sticky; top:56px; background:var(--bg); padding:6px 0 10px; z-index:10;}
+  .sinResultados{text-align:center; color:var(--dim); padding:30px 12px; font-size:15px; line-height:1.6;}
+  .secTitle{font-size:12px; font-weight:800; color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin:18px 0 8px;}
+  .dup{margin-top:8px; background:#2b2108; border:1px solid var(--pago); border-radius:12px; padding:10px 12px;}
+  .dupTit{font-size:12px; font-weight:800; color:var(--pago); letter-spacing:.5px; margin-bottom:6px;}
+  .dupIt{font-size:14px; padding:5px 0; border-top:1px solid #3d3110;}
+  .dupIt:first-of-type{border-top:none;}
+  .dupIt small{color:#c9b47a; display:block; margin-top:1px;}
+  .modalBg{position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:250; display:flex; align-items:center; justify-content:center; padding:18px;}
+  .modalBox{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:18px; max-width:440px; width:100%; max-height:84vh; overflow:auto;}
+  .modalTit{font-size:19px; font-weight:800; margin-bottom:4px;}
+  .modalSub{font-size:14px; color:var(--dim); margin-bottom:12px;}
+  .modalBtns{display:flex; flex-direction:column; gap:8px; margin-top:16px;}
+  .mBtn{border:none; border-radius:12px; font-size:16px; font-weight:800; padding:14px; cursor:pointer;}
+  .mBtn.pri{background:var(--accent); color:#fff;}
+  .mBtn.sec{background:var(--card2); color:var(--txt); border:1px solid var(--line);}
+  .mBtn.gho{background:none; color:var(--dim); font-weight:700; font-size:14px;}
+  #login{position:fixed; inset:0; background:var(--bg); z-index:200; display:flex; align-items:center; justify-content:center; padding:22px; overflow:auto;}
+  .loginBox{width:100%; max-width:380px;}
+  .loginLogo{text-align:center; margin-bottom:22px;}
+  .loginLogo h1{font-size:25px; letter-spacing:4px; font-weight:800;}
+  .loginLogo h1 span{color:var(--accent);}
+  .loginLogo p{color:var(--dim); font-size:12px; margin-top:6px; letter-spacing:1px;}
+  .loginErr{background:#2b0b14; border:1px solid var(--accent); color:#ff9db4; font-size:14px; padding:10px 12px; border-radius:10px; margin-top:14px;}
+  .aviso{background:var(--sinrecbg); border:1px solid var(--sinrec); color:#bfe6fb; font-size:14px; line-height:1.45; padding:11px 13px; border-radius:12px; margin-top:12px;}
+  .aviso b{color:#fff;}
+  .estado{position:fixed; left:0; right:0; bottom:58px; z-index:260; text-align:center; pointer-events:none;}
+  .estado span{display:inline-block; font-size:12px; font-weight:700; padding:6px 14px; border-radius:999px;}
+  .estado.err span{background:#2b0b14; border:1px solid var(--accent); color:#ff9db4;}
+  .estado.ok span{background:var(--freebg); border:1px solid var(--free); color:var(--free);}
+  /* reporte de cierre */
+  #reporte{position:fixed; inset:0; background:var(--bg); z-index:150; overflow-y:auto; display:none;}
+  #reporte.show{display:block;}
+  .repWrap{max-width:640px; margin:0 auto; padding:16px 14px 40px;}
+  .repHead{display:flex; align-items:center; justify-content:space-between; gap:8px; position:sticky; top:0; background:var(--bg); padding:8px 0 12px; border-bottom:1px solid var(--line); margin-bottom:8px;}
+  .repHead h2{font-size:18px; font-weight:800;}
+  .repHead .sub{font-size:12px; color:var(--dim); margin-top:2px;}
+  .repClose{background:var(--card2); border:1px solid var(--line); color:var(--txt); font-size:20px; width:40px; height:40px; border-radius:12px; cursor:pointer; flex:none;}
+  .repSec{font-size:12px; font-weight:800; color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin:20px 0 8px;}
+  .repTiles{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .repTile{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 6px; text-align:center;}
+  .repTile b{display:block; font-size:24px; font-weight:800;}
+  .repTile.big{grid-column:span 3;} .repTile.big b{font-size:30px;}
+  .repTile span{font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px;}
+  .repTable{width:100%; border-collapse:collapse; font-size:14px; overflow:hidden; border-radius:12px; border:1px solid var(--line);}
+  .repTable th,.repTable td{padding:9px 8px; text-align:right; border-bottom:1px solid var(--line);}
+  .repTable th:first-child,.repTable td:first-child{text-align:left;}
+  .repTable thead th{background:var(--card2); font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--dim);}
+  .repTable tbody tr:last-child td{border-bottom:none;}
+  .repTable .dinero{color:var(--pago); font-weight:800;}
+  .repRank{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .repRankBox{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:11px 12px;}
+  .repRankBox .k{font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px;}
+  .repRankBox .v{font-size:17px; font-weight:800; margin-top:3px;}
+  .repRankBox .v small{color:var(--dim); font-weight:600; font-size:13px;}
+  .repNo{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 12px; font-size:14px; margin-bottom:6px; display:flex; justify-content:space-between; gap:8px;}
+  .repNo small{color:var(--dim);}
+  .repWarn{background:#2b2108; border:1px solid var(--pago); color:#f5deb0; font-size:13px; line-height:1.45; padding:11px 13px; border-radius:12px; margin:6px 0 4px;}
+  .repBtns{display:flex; flex-direction:column; gap:8px; margin-top:24px;}
+  .histItem{width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:13px 14px; margin-bottom:8px; cursor:pointer; text-align:left; color:var(--txt);}
+  .histFecha{font-size:15px; font-weight:800; text-transform:capitalize;}
+  .histSub{font-size:12px; color:var(--dim); margin-top:3px;}
+  .histFlecha{font-size:22px; color:var(--dim); flex:none;}
+  .histAbierta{background:var(--freebg); color:var(--free); border:1px solid var(--free); font-size:10px; font-weight:800; padding:2px 7px; border-radius:6px; vertical-align:middle; margin-left:4px;}
+  .cargando{text-align:center; color:var(--dim); padding:40px 0; font-size:15px;}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <form class="loginBox" onsubmit="entrar(event)">
+    <div class="loginLogo">
+      <h1>FENDY <span>·</span> BOLETERÍA</h1>
+      <p id="lSub">INGRESÁ CON TU CUENTA</p>
+    </div>
+    <label>Correo</label>
+    <input type="email" id="lEmail" name="username" autocomplete="username" placeholder="nombre@fendyfunclub.com" required>
+    <label>Contraseña</label>
+    <input type="password" id="lPass" name="password" autocomplete="current-password" placeholder="••••••••" required>
+    <button type="submit" class="btnMain" id="lBtn">ENTRAR</button>
+    <div id="lErr"></div>
+  </form>
+</div>
+
+<div id="modal" class="modalBg hide">
+  <div class="modalBox">
+    <div class="modalTit" id="modalTit"></div>
+    <div class="modalSub" id="modalSub"></div>
+    <div id="modalBody"></div>
+    <div class="modalBtns" id="modalBtns"></div>
+  </div>
+</div>
+
+<div id="reporte">
+  <div class="repWrap">
+    <div class="repHead">
+      <div><h2 id="repTit">Reporte de la noche</h2><div class="sub" id="repSub"></div></div>
+      <button class="repClose" onclick="cerrarReporte()">✕</button>
+    </div>
+    <div id="repBody"></div>
+  </div>
+</div>
+
+<header>
+  <div class="brand">
+    <div>
+      <h1>FENDY <span>·</span> BOLETERÍA</h1>
+      <div class="evento" id="evFecha">—</div>
+    </div>
+    <div class="quien" id="quien"></div>
+  </div>
+</header>
+
+<main>
+  <!-- ================= CARGA ================= -->
+  <section id="tab-carga" class="hide">
+    <label>Nombre y apellido</label>
+    <textarea id="fNombres" rows="3" placeholder="Amira Yanik&#10;&#10;(o pegá varios, uno por línea)"></textarea>
+    <div class="ayuda">Si pegás varios, se crea <b>una ficha por persona</b> para marcarlas al llegar por separado. Si alguien viene acompañado, escribí <b>Nombre +2</b>.</div>
+    <div id="dupAviso"></div>
+
+    <label>Grupo / mesa (opcional)</label>
+    <input type="text" id="fGrupo" placeholder="Ej: Mesa 4 · Cumple de Agos" autocomplete="off">
+
+    <label>Condición</label>
+    <div class="chips" id="fTipos">
+      <button type="button" class="chip free" data-t="free">FREE</button>
+      <button type="button" class="chip sinrec" data-t="sinrec">SIN RECARGO</button>
+      <button type="button" class="chip ext" data-t="ext">EXTENDER QR</button>
+      <button type="button" class="chip pago" data-t="pago">PAGAN</button>
+    </div>
+
+    <div class="grid2">
+      <div id="wrapFree" class="hide"><label style="color:var(--free)">Cuántos free</label>
+        <div class="stepRow"><button class="stepBtn" onclick="step('qFree',-1)">−</button><div class="num" id="qFree">1</div><button class="stepBtn" onclick="step('qFree',1)">+</button></div></div>
+      <div id="wrapSinrec" class="hide"><label style="color:var(--sinrec)">Cuántos sin recargo</label>
+        <div class="stepRow"><button class="stepBtn" onclick="step('qSinrec',-1)">−</button><div class="num" id="qSinrec">1</div><button class="stepBtn" onclick="step('qSinrec',1)">+</button></div></div>
+      <div id="wrapExt" class="hide"><label style="color:var(--ext)">Cuántos QR extender</label>
+        <div class="stepRow"><button class="stepBtn" onclick="step('qExt',-1)">−</button><div class="num" id="qExt">1</div><button class="stepBtn" onclick="step('qExt',1)">+</button></div></div>
+      <div id="wrapPago" class="hide"><label style="color:var(--pago)">Cuántos pagan</label>
+        <div class="stepRow"><button class="stepBtn" onclick="step('qPago',-1)">−</button><div class="num" id="qPago">1</div><button class="stepBtn" onclick="step('qPago',1)">+</button></div></div>
+    </div>
+
+    <div id="wrapPrecio" class="hide">
+      <label style="color:var(--pago)">Precio c/u</label>
+      <div class="chips" id="fPrecios">
+        <button type="button" class="chip pago" data-p="10000">$10.000</button>
+        <button type="button" class="chip pago" data-p="12000">$12.000</button>
+        <button type="button" class="chip pago" data-p="15000">$15.000</button>
+        <button type="button" class="chip pago" data-p="0">Otro…</button>
+      </div>
+    </div>
+
+    <label>Nota (opcional)</label>
+    <input type="text" id="fNota" placeholder="Ej: chicas free / hombres pagan · mesa" autocomplete="off">
+
+    <div class="ayuda" id="firmaAut"></div>
+    <button class="btnMain" id="btnGuardar" onclick="guardar()">ANOTAR</button>
+    <div class="resumen" id="resumen"></div>
+
+    <div class="secTitle">Últimos anotados</div>
+    <div id="listaCarga"></div>
+  </section>
+
+  <!-- ================= BOLETERÍA ================= -->
+  <section id="tab-bole" class="hide">
+    <div class="tot" id="totales"></div>
+    <div class="searchWrap">
+      <input type="search" id="buscar" placeholder="🔍 Buscar nombre…" autocomplete="off" oninput="renderBole()">
+    </div>
+    <div id="listaBole"><div class="cargando">Cargando…</div></div>
+  </section>
+</main>
+
+<div class="estado hide" id="estado"><span></span></div>
+
+<nav>
+  <button id="nav-carga" class="act hide" onclick="tab('carga')">➕ CARGA</button>
+  <button id="nav-bole" onclick="tab('bole')">🎟️ BOLETERÍA</button>
+</nav>
+
+<script>
+'use strict';
+const API='https://duqrcrabazpixdkltpbd.supabase.co';
+const KEY='sb_publishable_jqsitKb6yi7GBuqXOwPy_w_DEmtw-3w';
+const KS='fendy_bol_sesion';
+
+let ses=null, yo=null, evento=null, items=[], sincronizando=false;
+try{ses=JSON.parse(localStorage.getItem(KS)||'null');}catch(e){}
+const esAdmin=()=>!!yo&&yo.rol==='admin';
+const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+/* ---------- conexión ---------- */
+function aviso(txt,tipo){
+  const e=document.getElementById('estado');
+  if(!txt){e.classList.add('hide');return;}
+  e.className='estado '+(tipo||'err'); e.querySelector('span').textContent=txt;
+  if(tipo==='ok')setTimeout(()=>e.classList.add('hide'),1800);
+}
+async function refrescarToken(){
+  const r=await fetch(API+'/auth/v1/token?grant_type=refresh_token',{method:'POST',
+    headers:{apikey:KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({refresh_token:ses.refresh_token})});
+  if(!r.ok)return false;
+  const d=await r.json();
+  ses={...ses,access_token:d.access_token,refresh_token:d.refresh_token};
+  localStorage.setItem(KS,JSON.stringify(ses));
+  return true;
+}
+// id del usuario logueado, sacado del propio token
+function miId(){
+  try{
+    const p=ses.access_token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    return JSON.parse(decodeURIComponent(escape(atob(p)))).sub||null;
+  }catch(e){ return null; }
+}
+async function api(ruta,opt={},reintento=true){
+  const r=await fetch(API+ruta,{...opt,headers:{
+    apikey:KEY, Authorization:'Bearer '+(ses&&ses.access_token),
+    'Content-Type':'application/json', ...(opt.headers||{})}});
+  if(r.status===401&&reintento&&ses&&ses.refresh_token){
+    if(await refrescarToken())return api(ruta,opt,false);
+    cerrarSesion(); throw new Error('Sesión vencida, volvé a entrar.');
+  }
+  const cuerpo=await r.text();
+  if(!r.ok){
+    let m='Error de conexión';
+    try{const j=JSON.parse(cuerpo); m=j.message||j.error_description||j.msg||m;}catch(e){}
+    throw new Error(m);
+  }
+  if(!cuerpo)return null;                 // 201/204 sin contenido
+  try{return JSON.parse(cuerpo);}catch(e){return null;}
+}
+
+/* ---------- sesión ---------- */
+async function entrar(ev){
+  ev.preventDefault();
+  const btn=document.getElementById('lBtn');
+  const email=document.getElementById('lEmail').value.trim().toLowerCase();
+  const password=document.getElementById('lPass').value;
+  btn.disabled=true; btn.textContent='ENTRANDO…'; errLogin('');
+  try{
+    const r=await fetch(API+'/auth/v1/token?grant_type=password',{method:'POST',
+      headers:{apikey:KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email,password})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error_description||d.msg||'No pudimos entrar.');
+    ses={access_token:d.access_token,refresh_token:d.refresh_token,email};
+    localStorage.setItem(KS,JSON.stringify(ses));
+    document.getElementById('lPass').value='';
+    await arrancar();
+  }catch(e){
+    errLogin(/invalid|credentials|grant/i.test(e.message)?'Correo o contraseña incorrectos.':e.message);
+  }finally{ btn.disabled=false; btn.textContent='ENTRAR'; }
+}
+function errLogin(m){document.getElementById('lErr').innerHTML=m?`<div class="loginErr">${esc(m)}</div>`:'';}
+function cerrarSesion(){
+  ses=null; yo=null; localStorage.removeItem(KS);
+  document.getElementById('login').classList.remove('hide');
+}
+function salir(){
+  modal('¿Cerrar sesión?','Vas a tener que volver a poner la contraseña.','',[
+    {txt:'Sí, salir',tipo:'pri',fn:cerrarSesion},{txt:'Cancelar',tipo:'gho'}]);
+}
+function menu(){
+  const b=[{txt:'🔑 Cambiar mi contraseña',tipo:'sec',fn:pedirNuevaClave}];
+  if(esAdmin()){
+    b.push({txt:'📊 Reporte / cerrar noche',tipo:'sec',fn:verReporte});
+    b.push({txt:'🗂️ Noches anteriores',tipo:'sec',fn:verHistorico});
+    b.push({txt:'🌙 Abrir una noche nueva',tipo:'sec',fn:pedirNuevaNoche});
+  }
+  b.push({txt:'⏻ Cerrar sesión',tipo:'sec',fn:salir});
+  b.push({txt:'Cerrar',tipo:'gho'});
+  modal(yo.nombre,ses.email,'',b);
+}
+function pedirNuevaClave(){
+  modal('Cambiar contraseña','Mínimo 6 caracteres.',
+    `<label>Nueva contraseña</label><input type="password" id="np1" autocomplete="new-password">
+     <label>Repetir</label><input type="password" id="np2" autocomplete="new-password">`,
+    [{txt:'Guardar',tipo:'pri',fn:null,mantener:true,accion:async()=>{
+        const a=document.getElementById('np1').value,b=document.getElementById('np2').value;
+        if(a.length<6)return alert('Muy corta: mínimo 6 caracteres.');
+        if(a!==b)return alert('No coinciden.');
+        try{ await api('/auth/v1/user',{method:'PUT',body:JSON.stringify({password:a})});
+          cerrarModal(); aviso('Contraseña actualizada','ok');
+        }catch(e){alert(e.message);}
+      }},{txt:'Cancelar',tipo:'gho'}]);
+}
+function pedirNuevaNoche(){
+  modal('Abrir una noche nueva','La lista de hoy se archiva y arrancás con la lista vacía.',
+    `<label>Fecha del evento</label><input type="text" id="nfecha" value="${new Date().toISOString().slice(0,10)}">
+     <div class="ayuda">Formato: AAAA-MM-DD</div>`,
+    [{txt:'Abrir esa noche',tipo:'pri',mantener:true,accion:async()=>{
+        const f=document.getElementById('nfecha').value.trim();
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(f))return alert('Fecha inválida.');
+        try{
+          if(evento)await api('/rest/v1/eventos?id=eq.'+evento.id,{method:'PATCH',body:JSON.stringify({abierto:false})});
+          await api('/rest/v1/eventos',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},
+            body:JSON.stringify({fecha:f,nombre:'Evento '+f,abierto:true})});
+          cerrarModal(); await arrancar();
+        }catch(e){alert(e.message);}
+      }},{txt:'Cancelar',tipo:'gho'}]);
+}
+
+/* ---------- modal ---------- */
+function modal(tit,sub,body,botones){
+  document.getElementById('modalTit').textContent=tit;
+  document.getElementById('modalSub').textContent=sub||'';
+  document.getElementById('modalBody').innerHTML=body||'';
+  const cont=document.getElementById('modalBtns'); cont.innerHTML='';
+  botones.forEach(b=>{
+    const el=document.createElement('button');
+    el.className='mBtn '+(b.tipo||'sec'); el.textContent=b.txt;
+    el.onclick=()=>{ if(b.mantener){b.accion&&b.accion();} else {cerrarModal(); b.fn&&b.fn();} };
+    cont.appendChild(el);
+  });
+  document.getElementById('modal').classList.remove('hide');
+}
+function cerrarModal(){document.getElementById('modal').classList.add('hide');}
+
+/* ---------- reporte de cierre ---------- */
+let repActual=null;
+const money=n=>'$'+Number(n||0).toLocaleString('es-AR');
+async function verReporte(){
+  if(!evento)return alert('No hay ninguna noche abierta.');
+  aviso('Generando reporte…','ok');
+  try{
+    const rep=await api('/rest/v1/rpc/reporte_noche',{method:'POST',
+      body:JSON.stringify({p_evento:evento.id,p_cerrar:false})});
+    aviso('');
+    repActual=rep; renderReporte(rep,{permitirCerrar:true});
+  }catch(e){ aviso(''); alert('No se pudo generar el reporte: '+e.message); }
+}
+async function verHistorico(){
+  aviso('Cargando noches…','ok');
+  try{
+    const lista=await api('/rest/v1/rpc/historico_noches',{method:'POST',body:'{}'});
+    aviso('');
+    document.getElementById('repTit').textContent='🗂️ Noches anteriores';
+    document.getElementById('repSub').textContent=`${lista.length} noche${lista.length!==1?'s':''} registrada${lista.length!==1?'s':''}`;
+    document.getElementById('repBody').innerHTML = lista.length ? lista.map(n=>`
+      <button class="histItem" onclick="abrirReporteHistorico('${n.id}',${n.abierto})">
+        <div><div class="histFecha">${fechaLarga(n.fecha)}${n.abierto?' <span class="histAbierta">EN CURSO</span>':''}</div>
+        <div class="histSub">${n.personas} anotados · ${n.ingresaron} entraron · ${money(n.recaudado)}</div></div>
+        <div class="histFlecha">›</div>
+      </button>`).join('') : '<div class="repNo"><span style="color:var(--dim)">Todavía no hay noches registradas.</span></div>';
+    document.getElementById('reporte').classList.add('show');
+    document.getElementById('reporte').scrollTop=0;
+  }catch(e){ aviso(''); alert('No se pudo cargar el histórico: '+e.message); }
+}
+async function abrirReporteHistorico(id,abierta){
+  aviso('Generando reporte…','ok');
+  try{
+    const rep=await api('/rest/v1/rpc/reporte_noche',{method:'POST',
+      body:JSON.stringify({p_evento:id,p_cerrar:false})});
+    aviso('');
+    repActual=rep; renderReporte(rep,{desdeHistorico:true, cerrada:!abierta});
+  }catch(e){ aviso(''); alert('No se pudo abrir la noche: '+e.message); }
+}
+function fechaLarga(f){ return new Date(f+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}); }
+function noShowTxt(n){
+  if(n.faltan>=n.total) return n.total===1 ? 'no vino' : `no vino ninguno (grupo de ${n.total})`;
+  const entraron=n.total-n.faltan;
+  const falta = n.faltan===1 ? 'faltó 1' : 'faltaron '+n.faltan;
+  return `entraron ${entraron} de ${n.total} · ${falta}`;
+}
+function renderReporte(rep,opts){
+  opts=opts||{};
+  const {permitirCerrar=false, cerrada=false, desdeHistorico=false}=opts;
+  const t=rep.totales, c=rep.por_condicion, r=rep.ranking;
+  document.getElementById('repTit').textContent=cerrada?'✅ Noche cerrada':(desdeHistorico?'Reporte':'Reporte de la noche');
+  document.getElementById('repSub').textContent=fechaLarga(rep.fecha);
+  const condRow=(lbl,cls,o)=>`<tr><td><span class="badge ${cls}">${lbl}</span></td><td>${o.anotados}</td><td>${o.entraron}</td></tr>`;
+  const soc=rep.por_socio||[];
+  const rank=(k,box)=>box?`<div class="repRankBox"><div class="k">${k}</div><div class="v">${esc(box.socio)} <small>· ${box.valor}</small></div></div>`
+                          :`<div class="repRankBox"><div class="k">${k}</div><div class="v" style="color:var(--dim)">—</div></div>`;
+  const rankRec=r.mas_recaudado?`<div class="repRankBox"><div class="k">💰 Más recaudó</div><div class="v">${esc(r.mas_recaudado.socio)} <small>· ${money(r.mas_recaudado.valor)}</small></div></div>`:'';
+  let h='';
+
+  if(!rep.atribucion_confiable)
+    h+=`<div class="repWarn">⚠️ <b>Los datos por socio de esta noche no son confiables</b> por el error de identidad que ya corregimos. Los totales de abajo sí son correctos. A partir de la próxima noche, todo lo de cada socio va a ser exacto.</div>`;
+
+  h+=`<div class="repSec">Resumen</div>
+    <div class="repTiles">
+      <div class="repTile"><b>${t.personas}</b><span>anotados</span></div>
+      <div class="repTile"><b style="color:var(--ok)">${t.ingresaron}</b><span>entraron</span></div>
+      <div class="repTile"><b style="color:var(--dim)">${t.no_vinieron}</b><span>no vinieron</span></div>
+      <div class="repTile"><b>${t.asistencia_pct}%</b><span>asistencia</span></div>
+      <div class="repTile"><b style="color:var(--free)">${c.free.entraron}</b><span>free entraron</span></div>
+      <div class="repTile"><b>${t.fichas}</b><span>fichas</span></div>
+      <div class="repTile big"><b class="dinero" style="color:var(--pago)">${money(t.recaudado)}</b><span>recaudado en puerta</span></div>
+    </div>`;
+
+  h+=`<div class="repSec">Por condición</div>
+    <div style="overflow-x:auto"><table class="repTable">
+      <thead><tr><th>Condición</th><th>Anotados</th><th>Entraron</th></tr></thead>
+      <tbody>
+        ${condRow('FREE','b-free',c.free)}
+        ${condRow('SIN RECARGO','b-sinrec',c.sinrec)}
+        ${condRow('EXTENDER QR','b-ext',c.ext)}
+        ${condRow('PAGAN','b-pago',c.pago)}
+      </tbody></table></div>`;
+
+  h+=`<div class="repSec">Ranking${rep.atribucion_confiable?'':' (referencial)'}</div>
+    <div class="repRank">
+      ${rank('🏆 Más invitados',r.mas_invitados)}
+      ${rank('🎟️ Más free',r.mas_free)}
+      ${rank('💸 Más sin recargo',r.mas_descuento)}
+      ${rankRec}
+    </div>`;
+
+  h+=`<div class="repSec">Por socio${rep.atribucion_confiable?'':' (referencial)'}</div>
+    <div style="overflow-x:auto"><table class="repTable">
+      <thead><tr><th>Socio</th><th>Cargó</th><th>Entró</th><th>Free</th><th>S/Rec</th><th>Paga</th><th>Recaudó</th></tr></thead>
+      <tbody>${soc.map(s=>`<tr><td><b>${esc(s.socio)}</b></td><td>${s.personas}</td><td>${s.entraron}</td><td>${s.free}</td><td>${s.sinrec}</td><td>${s.pagan}</td><td class="dinero">${money(s.recaudado)}</td></tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--dim)">Sin datos</td></tr>'}</tbody></table></div>`;
+
+  const ns=rep.no_shows||[];
+  h+=`<div class="repSec">No vinieron (${ns.length} fichas)</div>`;
+  h+= ns.length ? ns.map(n=>`<div class="repNo"><span>${esc(n.nombre)}</span><small>${noShowTxt(n)}</small></div>`).join('')
+               : `<div class="repNo"><span style="color:var(--dim)">Vinieron todos 🎉</span></div>`;
+
+  h+=`<div class="repBtns">
+      <button class="mBtn sec" onclick="enviarWhatsapp()">📲 Enviar por WhatsApp</button>
+      <button class="mBtn gho" onclick="copiarReporte()">📋 Copiar el texto</button>
+      ${permitirCerrar
+        ? `<button class="mBtn pri" onclick="confirmarCerrar()">🏁 Finalizar y cerrar la noche</button>
+           <button class="mBtn gho" onclick="cerrarReporte()">Todavía no, volver</button>`
+        : desdeHistorico
+          ? `<button class="mBtn sec" onclick="verHistorico()">← Volver a las noches</button>
+             <button class="mBtn gho" onclick="cerrarReporte()">Cerrar</button>`
+          : `<button class="mBtn pri" onclick="cerrarReporte()">Listo</button>`}
+    </div>`;
+
+  document.getElementById('repBody').innerHTML=h;
+  document.getElementById('reporte').classList.add('show');
+  document.getElementById('reporte').scrollTop=0;
+}
+function confirmarCerrar(){
+  modal('¿Cerrar la noche?','Se archiva la lista y no se puede seguir anotando ni marcando ingresos hasta abrir una noche nueva.','',[
+    {txt:'Sí, finalizar la noche',tipo:'pri',fn:async()=>{
+      try{
+        const rep=await api('/rest/v1/rpc/reporte_noche',{method:'POST',
+          body:JSON.stringify({p_evento:evento.id,p_cerrar:true})});
+        repActual=rep;
+        evento=null; items=[]; renderCarga(); renderBole();
+        document.getElementById('evFecha').textContent='Sin evento abierto';
+        renderReporte(rep,{cerrada:true});
+        aviso('Noche cerrada ✓','ok');
+      }catch(e){ alert('No se pudo cerrar: '+e.message); }
+    }},
+    {txt:'Cancelar',tipo:'gho'}]);
+}
+function cerrarReporte(){ document.getElementById('reporte').classList.remove('show'); }
+function reporteTexto(rep){
+  const t=rep.totales, c=rep.por_condicion, r=rep.ranking, L=[];
+  L.push(`🎫 FENDY · CIERRE ${fechaLarga(rep.fecha).toUpperCase()}`);
+  L.push('');
+  L.push(`👥 Anotados: ${t.personas}`);
+  L.push(`✅ Entraron: ${t.ingresaron}  (${t.asistencia_pct}%)`);
+  L.push(`🚫 No vinieron: ${t.no_vinieron}`);
+  L.push(`💰 Recaudado en puerta: ${money(t.recaudado)}`);
+  L.push('');
+  L.push(`FREE: ${c.free.entraron}/${c.free.anotados} · SIN REC: ${c.sinrec.entraron}/${c.sinrec.anotados} · EXT: ${c.ext.entraron}/${c.ext.anotados} · PAGAN: ${c.pago.entraron}/${c.pago.anotados}`);
+  if(!rep.atribucion_confiable){ L.push(''); L.push('⚠️ Datos por socio de esta noche no confiables (bug corregido).'); }
+  L.push(''); L.push('POR SOCIO' + (rep.atribucion_confiable?'':' (referencial)'));
+  (rep.por_socio||[]).forEach(s=>L.push(`• ${s.socio}: ${s.personas} cargados, ${s.entraron} entraron, ${s.free} free, ${money(s.recaudado)}`));
+  if(r.mas_recaudado){ L.push(''); L.push(`🏆 Más invitados: ${r.mas_invitados?r.mas_invitados.socio:'—'} · 💰 Más recaudó: ${r.mas_recaudado.socio} (${money(r.mas_recaudado.valor)})`); }
+  return L.join('\n');
+}
+function enviarWhatsapp(){
+  if(!repActual)return;
+  const url='https://wa.me/?text='+encodeURIComponent(reporteTexto(repActual));
+  const a=document.createElement('a');
+  a.href=url; a.target='_blank'; a.rel='noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+async function copiarReporte(){
+  if(!repActual)return;
+  const txt=reporteTexto(repActual);
+  try{ await navigator.clipboard.writeText(txt); aviso('Copiado ✓','ok'); }
+  catch(e){
+    const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta);
+    ta.select(); try{document.execCommand('copy'); aviso('Copiado ✓','ok');}catch(_){alert(txt);} ta.remove();
+  }
+}
+
+/* ---------- repetidos ---------- */
+function nrm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
+function lev(a,b){
+  if(a===b)return 0; const m=a.length,n=b.length; if(!m)return n; if(!n)return m;
+  const d=Array.from({length:m+1},(_,i)=>{const r=new Array(n+1).fill(0); r[0]=i; return r;});
+  for(let j=0;j<=n;j++)d[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++){
+    const c=a[i-1]===b[j-1]?0:1;
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);
+    if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1);
+  }
+  return d[m][n];
+}
+const sim=(a,b)=>{const m=Math.max(a.length,b.length); return m?1-lev(a,b)/m:1;};
+function parecidos(nombre){
+  const n=nrm(nombre); if(n.length<4)return [];
+  const tk=n.split(' ').filter(x=>x.length>2), out=[];
+  items.forEach(it=>{
+    const o=nrm(it.nombre); if(!o)return; let sc=0;
+    if(o===n)sc=1;
+    else{
+      const s=sim(n,o), otk=o.split(' ').filter(x=>x.length>2);
+      const coinc=tk.filter(t=>otk.some(u=>sim(t,u)>=.84)).length;
+      if(s>=.82)sc=s;
+      else if(coinc>=2)sc=.9;
+      else if(coinc>=1&&tk.length===1&&otk.length===1)sc=.85;
+      else if(coinc>=1&&Math.min(tk.length,otk.length)===1)sc=.7;
+      else if(tk.length===1&&otk.length===1&&s>=.74)sc=.8;
+    }
+    if(sc>=.7)out.push({it,sc});
+  });
+  return out.sort((a,b)=>b.sc-a.sc).slice(0,4);
+}
+function resumenCond(it){
+  const p=[];
+  if(it.free)p.push(it.free+' free');
+  if(it.sinrec)p.push(it.sinrec+' sin recargo');
+  if(it.ext)p.push(it.ext+' extender QR');
+  if(it.pago)p.push(it.pago+' pagan $'+Number(it.precio).toLocaleString('es-AR'));
+  return p.join(' + ')||'sin condición';
+}
+function chequearDup(){
+  const el=document.getElementById('dupAviso');
+  const vistos=new Set(); let filas='';
+  gente().forEach(({nombre})=>parecidos(nombre).forEach(({it})=>{
+    if(vistos.has(it.id))return; vistos.add(it.id);
+    filas+=`<div class="dupIt"><b>${esc(it.nombre)}</b> — ${esc(resumenCond(it))}
+      <small>lo anotó ${esc(it.autoriza)} a las ${hora(it)}${it.grupo?' · '+esc(it.grupo):''}</small></div>`;
+  }));
+  el.innerHTML=filas?`<div class="dup"><div class="dupTit">⚠️ YA HAY ALGUIEN ANOTADO ASÍ</div>${filas}</div>`:'';
+}
+
+/* ---------- formulario ---------- */
+let tipos=new Set(), precio=0;
+const gente=()=>parseLista(document.getElementById('fNombres').value);
+function syncWraps(){
+  // los contadores solo tienen sentido con una sola persona;
+  // con varias, cada línea es una ficha de a 1 (o +N escrito en la línea)
+  const varios=gente().length>1;
+  document.getElementById('wrapFree').classList.toggle('hide',varios||!tipos.has('free'));
+  document.getElementById('wrapSinrec').classList.toggle('hide',varios||!tipos.has('sinrec'));
+  document.getElementById('wrapExt').classList.toggle('hide',varios||!tipos.has('ext'));
+  document.getElementById('wrapPago').classList.toggle('hide',varios||!tipos.has('pago'));
+  document.getElementById('wrapPrecio').classList.toggle('hide',!tipos.has('pago'));
+}
+document.querySelectorAll('#fTipos .chip').forEach(c=>c.onclick=()=>{
+  const t=c.dataset.t; tipos.has(t)?tipos.delete(t):tipos.add(t);
+  c.classList.toggle('sel'); syncWraps(); resumen();
+});
+document.querySelectorAll('#fPrecios .chip').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('#fPrecios .chip').forEach(x=>x.classList.remove('sel'));
+  c.classList.add('sel'); precio=+c.dataset.p;
+  if(precio===0){const v=prompt('Precio por persona:'); precio=Math.max(0,parseInt(v||'0',10)||0);}
+  resumen();
+});
+function step(id,d){const el=document.getElementById(id); el.textContent=Math.max(1,Math.min(50,+el.textContent+d)); resumen();}
+const q=id=>+document.getElementById(id).textContent;
+function parseLista(txt){
+  return String(txt||'').split('\n').map(l=>{
+    let s=l.trim();
+    s=s.replace(/^\[[^\]]*\]\s*[^:]{1,40}:\s*/,'');
+    s=s.replace(/^[-–—•*·>\d]+[\.\)]?\s*/,'');
+    s=s.replace(/[,;]+$/,'').trim();
+    if(!s)return null;
+    let cant=1; const m=s.match(/\+\s*(\d{1,2})\s*$/);
+    if(m){cant=parseInt(m[1],10)+1; s=s.replace(/\+\s*\d{1,2}\s*$/,'').trim();}
+    return s?{nombre:s,cant}:null;
+  }).filter(Boolean);
+}
+function resumen(){
+  const g=gente(), p=[], varios=g.length>1;
+  const btn=document.getElementById('btnGuardar');
+  if(!g.length){
+    btn.textContent='ANOTAR';
+    document.getElementById('resumen').textContent='Escribí un nombre, o pegá varios…';
+    return;
+  }
+  if(varios){
+    const tot=g.reduce((a,b)=>a+b.cant,0);
+    if(tipos.has('free'))p.push('free');
+    if(tipos.has('sinrec'))p.push('sin recargo');
+    if(tipos.has('ext'))p.push('extender QR');
+    if(tipos.has('pago'))p.push('pagan'+(precio?' $'+precio.toLocaleString('es-AR'):''));
+    btn.textContent=`ANOTAR A LOS ${g.length}`;
+    document.getElementById('resumen').textContent=
+      `${g.length} fichas · ${tot} persona${tot>1?'s':''}${p.length?' → '+p.join(' + '):''}`;
+    return;
+  }
+  if(tipos.has('free'))p.push(q('qFree')+' free');
+  if(tipos.has('sinrec'))p.push(q('qSinrec')+' sin recargo');
+  if(tipos.has('ext'))p.push(q('qExt')+' QR a extender');
+  if(tipos.has('pago'))p.push(q('qPago')+' pagan'+(precio?' $'+precio.toLocaleString('es-AR'):''));
+  btn.textContent='ANOTAR';
+  document.getElementById('resumen').textContent=g[0].nombre+(p.length?' → '+p.join(' + '):'');
+}
+document.getElementById('fNombres').oninput=()=>{syncWraps(); resumen(); chequearDup();};
+
+function guardar(){
+  if(!evento)return alert('Todavía no cargó el evento. Esperá unos segundos.');
+  if(!tipos.size)return alert('Elegí al menos una condición');
+  if(tipos.has('pago')&&!precio)return alert('Falta el precio');
+  const nota=document.getElementById('fNota').value.trim();
+  const base=(nombre,cant,grupo)=>({
+    evento_id:evento.id, nombre, grupo:grupo||'',
+    free:tipos.has('free')?cant:0, sinrec:tipos.has('sinrec')?cant:0,
+    ext:tipos.has('ext')?cant:0, pago:tipos.has('pago')?cant:0,
+    precio:tipos.has('pago')?precio:0, nota,
+    autoriza:yo.nombre, autoriza_id:miId()   // queda la firma real, no solo el nombre
+  });
+  const g=gente();
+  if(!g.length)return alert('Falta el nombre');
+  const grupo=document.getElementById('fGrupo').value.trim();
+  let nuevas;
+  if(g.length>1){
+    nuevas=g.map(p=>base(p.nombre,p.cant,grupo));
+  }else{
+    // una sola persona: mandan los contadores de arriba
+    const c=t=>tipos.has(t)?q({free:'qFree',sinrec:'qSinrec',ext:'qExt',pago:'qPago'}[t]):0;
+    const it=base(g[0].nombre,1,grupo);
+    it.free=c('free'); it.sinrec=c('sinrec'); it.ext=c('ext'); it.pago=c('pago');
+    nuevas=[it];
+  }
+  const repes=nuevas.map(f=>({f,p:parecidos(f.nombre)})).filter(x=>x.p.length);
+  if(repes.length){
+    const body=repes.map(({f,p})=>`<div class="dup" style="margin-bottom:8px">
+      <div class="dupTit">ESTÁS ANOTANDO: ${esc(f.nombre)}</div>
+      ${p.map(({it})=>`<div class="dupIt"><b>${esc(it.nombre)}</b> — ${esc(resumenCond(it))}
+        <small>lo anotó ${esc(it.autoriza)} a las ${hora(it)}</small></div>`).join('')}</div>`).join('');
+    const soloNuevos=nuevas.filter(f=>!parecidos(f.nombre).length);
+    const btns=[];
+    if(nuevas.length>1&&soloNuevos.length)btns.push({txt:`Anotar solo los ${soloNuevos.length} nuevos`,tipo:'pri',fn:()=>enviar(soloNuevos)});
+    btns.push({txt:nuevas.length>1?'Anotar todos igual':'Anotar igual, es otra persona',
+      tipo:(nuevas.length>1&&soloNuevos.length)?'sec':'pri',fn:()=>enviar(nuevas)});
+    btns.push({txt:'Cancelar',tipo:'gho'});
+    modal(repes.length>1?`⚠️ ${repes.length} ya estaban anotados`:'⚠️ Ya está anotado',
+      'Fijate si es la misma persona antes de anotarla de nuevo.',body,btns);
+    return;
+  }
+  enviar(nuevas);
+}
+async function enviar(filas){
+  const btn=document.getElementById('btnGuardar');
+  btn.disabled=true; const txt=btn.textContent; btn.textContent='GUARDANDO…';
+  try{
+    await api('/rest/v1/anotados',{method:'POST',body:JSON.stringify(filas)});
+    document.getElementById('fNombres').value='';
+    document.getElementById('fGrupo').value='';
+    document.getElementById('fNota').value='';
+    document.getElementById('dupAviso').innerHTML='';
+    tipos.clear(); precio=0;
+    document.querySelectorAll('#fTipos .chip,#fPrecios .chip').forEach(x=>x.classList.remove('sel'));
+    ['qFree','qSinrec','qExt','qPago'].forEach(i=>document.getElementById(i).textContent='1');
+    syncWraps(); resumen();
+    aviso(filas.length>1?`${filas.length} anotados ✓`:'Anotado ✓','ok');
+    await sincronizar();
+    document.getElementById('fNombres').focus();
+  }catch(e){ aviso(e.message); alert('No se pudo guardar: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent=txt; }
+}
+
+/* ---------- datos ---------- */
+const CONDS=[
+  {k:'free',lbl:'FREE',cls:'b-free',ing:'i_free'},
+  {k:'sinrec',lbl:'SIN RECARGO',cls:'b-sinrec',ing:'i_sinrec'},
+  {k:'ext',lbl:'EXTENDER QR',cls:'b-ext',ing:'i_ext'},
+  {k:'pago',lbl:'PAGAN',cls:'b-pago',ing:'i_pago'}];
+const totalDe=it=>it.free+it.sinrec+it.ext+it.pago;
+const ingresDe=it=>it.i_free+it.i_sinrec+it.i_ext+it.i_pago;
+const completo=it=>ingresDe(it)>=totalDe(it);
+const hora=it=>new Date(it.creado_en).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+
+async function sincronizar(){
+  if(sincronizando||!evento)return;
+  sincronizando=true;
+  try{
+    items=await api(`/rest/v1/anotados?evento_id=eq.${evento.id}&select=*&order=creado_en.desc`);
+    aviso('');
+    renderCarga(); renderBole();
+  }catch(e){ aviso('Sin conexión — reintentando'); }
+  finally{ sincronizando=false; }
+}
+async function arrancar(){
+  try{
+    const uid=miId();
+    if(!uid)throw new Error('No pudimos leer tu sesión. Volvé a entrar.');
+    // ¡filtrar por MI id! los admin pueden ver todos los perfiles,
+    // y sin este filtro la app tomaba el de otra persona.
+    const perf=await api('/rest/v1/perfiles?select=nombre,rol&id=eq.'+uid);
+    if(!perf.length)throw new Error('Tu cuenta no tiene perfil asignado.');
+    yo=perf[0];
+    const evs=await api('/rest/v1/eventos?abierto=eq.true&select=*&order=fecha.desc&limit=1');
+    evento=evs[0]||null;
+    document.getElementById('login').classList.add('hide');
+    document.getElementById('quien').innerHTML=
+      `${esc(yo.nombre)} <small>· ${esAdmin()?'admin':'boletería'}</small><button onclick="menu()" title="Opciones">⋯</button>`;
+    document.getElementById('nav-carga').classList.toggle('hide',!esAdmin());
+    document.getElementById('firmaAut').innerHTML=`Se anota como autorizado por <b>${esc(yo.nombre)}</b>.`;
+    document.getElementById('evFecha').textContent=evento
+      ? 'Evento: '+new Date(evento.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'2-digit'})
+      : 'Sin evento abierto';
+    tab(esAdmin()?'carga':'bole');
+    await sincronizar();
+  }catch(e){ errLogin(e.message); cerrarSesion(); }
+}
+
+/* ---------- render ---------- */
+function badges(it){
+  let h='';
+  CONDS.forEach(c=>{ if(it[c.k])h+=`<span class="badge ${c.cls}">${c.lbl} ×${it[c.k]}${c.k==='pago'?' · $'+Number(it.precio).toLocaleString('es-AR'):''}</span>`; });
+  if(it.grupo)h+=`<span class="badge b-grupo">👥 ${esc(it.grupo)}</span>`;
+  return h;
+}
+function renderCarga(){
+  document.getElementById('listaCarga').innerHTML=items.slice(0,15).map(it=>{
+    const ing=ingresDe(it),tot=totalDe(it);
+    return `<div class="card${completo(it)?' in':''}">
+      <div class="cardTop">
+        <div><div class="nombre">${esc(it.nombre)}</div>
+        <div class="meta">${hora(it)} · autoriza ${esc(it.autoriza)}${ing?` · <b style="color:var(--ok)">${ing}/${tot} adentro</b>`:''}</div></div>
+        <button class="btnDel" onclick="borrar('${it.id}')">✕</button>
+      </div>
+      <div class="badges">${badges(it)}</div>
+      ${it.nota?`<div class="nota">${esc(it.nota)}</div>`:''}
+    </div>`;
+  }).join('')||'<div class="cargando">Todavía no anotaste a nadie.</div>';
+}
+function renderBole(){
+  const f=(document.getElementById('buscar').value||'').trim();
+  const vis=items.filter(it=>!f||nrm(it.nombre).includes(nrm(f))||nrm(it.grupo).includes(nrm(f)));
+  const pend=vis.filter(i=>!completo(i)).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  const dentro=vis.filter(completo).sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
+  const t={an:0,ing:0,free:0,pagan:0};
+  items.forEach(i=>{t.an+=totalDe(i); t.ing+=ingresDe(i); t.free+=i.free; t.pagan+=i.pago;});
+  document.getElementById('totales').innerHTML=`
+    <div class="totBox"><b>${t.an}</b><span>anotados</span></div>
+    <div class="totBox"><b style="color:var(--ok)">${t.ing}</b><span>ingresaron</span></div>
+    <div class="totBox"><b style="color:var(--free)">${t.free}</b><span>free</span></div>
+    <div class="totBox"><b style="color:var(--pago)">${t.pagan}</b><span>pagan</span></div>`;
+  let h=pend.map(card).join('');
+  if(dentro.length)h+='<div class="secTitle">Ya ingresaron</div>'+dentro.map(card).join('');
+  document.getElementById('listaBole').innerHTML=h||
+    `<div class="sinResultados">${f?'<b>No hay nadie anotado con ese nombre.</b><br>Si insiste, consultá a los socios.':'Todavía no hay nadie anotado.'}</div>`;
+}
+function card(it){
+  const tot=totalDe(it),ing=ingresDe(it),fin=completo(it);
+  const act=CONDS.filter(c=>it[c.k]);
+  let cuerpo='';
+  if(tot===1){
+    const c=act[0];
+    cuerpo=`<div class="acciones">${fin
+      ?`<button class="btnUndo" onclick="mover('${it.id}','${c.k}',-1)">↩ Deshacer ingreso</button>`
+      :`<button class="btnIn" onclick="mover('${it.id}','${c.k}',1)">✔ INGRESÓ</button>`}</div>`;
+  }else{
+    cuerpo=act.map(c=>{
+      const e=it[c.ing],n=it[c.k],falta=n-e;
+      return `<div class="cont ${c.cls}">
+        <div class="contInfo">
+          <div class="contLbl">${c.lbl}${c.k==='pago'?' · $'+Number(it.precio).toLocaleString('es-AR'):''}</div>
+          <div class="contNum">${falta?`<b>${falta}</b> ${falta>1?'faltan':'falta'}`:'<b>✓</b> todos'} <span>· ${e} de ${n}</span></div>
+        </div>
+        <button class="contBtn menos" ${e?'':'disabled'} onclick="mover('${it.id}','${c.k}',-1)">−</button>
+        <button class="contBtn mas" ${falta?'':'disabled'} onclick="mover('${it.id}','${c.k}',1)">+1</button>
+      </div>`;}).join('');
+    if(!fin)cuerpo+=`<button class="btnTodos" onclick="todos('${it.id}')">Entraron todos juntos (${tot-ing})</button>`;
+  }
+  return `<div class="card${fin?' in':''}">
+    <div class="cardTop">
+      <div><div class="nombre">${esc(it.nombre)}</div>
+      <div class="meta">${hora(it)} · autoriza <b>${esc(it.autoriza)}</b></div></div>
+      <div style="display:flex;align-items:center;gap:4px">
+        ${tot>1?`<div class="pill${fin?' ok':''}">${ing}/${tot}</div>`:''}
+        ${esAdmin()?`<button class="btnDel" onclick="borrar('${it.id}')" title="Borrar">✕</button>`:''}
+      </div>
+    </div>
+    <div class="badges">${badges(it)}</div>
+    ${it.nota?`<div class="nota">📝 ${esc(it.nota)}</div>`:''}
+    ${cuerpo}
+  </div>`;
+}
+
+/* ---------- acciones ---------- */
+async function mover(id,campo,delta){
+  const it=items.find(x=>x.id===id); if(!it)return;
+  const c=CONDS.find(x=>x.k===campo);
+  const prev=it[c.ing];
+  it[c.ing]=Math.max(0,Math.min(it[campo],prev+delta));   // respuesta inmediata
+  renderBole(); renderCarga();
+  try{
+    const r=await api('/rest/v1/rpc/marcar_ingreso',{method:'POST',
+      body:JSON.stringify({p_anotado:id,p_campo:campo,p_delta:delta})});
+    Object.assign(it,r); renderBole(); renderCarga();
+  }catch(e){ it[c.ing]=prev; renderBole(); renderCarga(); aviso('No se pudo marcar: '+e.message); }
+}
+async function todos(id){
+  const it=items.find(x=>x.id===id); if(!it)return;
+  try{ const r=await api('/rest/v1/rpc/marcar_todos',{method:'POST',body:JSON.stringify({p_anotado:id})});
+    Object.assign(it,r); renderBole(); renderCarga();
+  }catch(e){ aviso('No se pudo marcar: '+e.message); }
+}
+function borrar(id){
+  if(!esAdmin())return;
+  const it=items.find(x=>x.id===id); if(!it)return;
+  const ing=ingresDe(it);
+  modal('¿Borrar este anotado?','Se saca de la lista de esta noche. No se puede deshacer.',
+    `<div class="dup"><div class="dupTit">SE VA A BORRAR</div>
+      <div class="dupIt"><b>${esc(it.nombre)}</b> — ${esc(resumenCond(it))}
+      <small>lo anotó ${esc(it.autoriza)} a las ${hora(it)}</small></div></div>
+     ${ing?`<div class="aviso">⚠️ Ojo: ${ing} de ${totalDe(it)} ya figuran como ingresados.</div>`:''}`,
+    [{txt:'Sí, borrar',tipo:'pri',fn:async()=>{
+        try{ await api('/rest/v1/anotados?id=eq.'+id,{method:'DELETE'});
+          items=items.filter(x=>x.id!==id); renderCarga(); renderBole(); aviso('Borrado','ok');
+        }catch(e){ aviso('No se pudo borrar: '+e.message); }
+      }},{txt:'Cancelar',tipo:'gho'}]);
+}
+
+/* ---------- navegación ---------- */
+function tab(t){
+  if(t==='carga'&&!esAdmin())t='bole';
+  document.getElementById('tab-carga').classList.toggle('hide',t!=='carga');
+  document.getElementById('tab-bole').classList.toggle('hide',t!=='bole');
+  document.getElementById('nav-carga').classList.toggle('act',t==='carga');
+  document.getElementById('nav-bole').classList.toggle('act',t==='bole');
+  if(t==='bole')renderBole();
+}
+
+/* ---------- arranque + sincronización ---------- */
+if(ses&&ses.access_token)arrancar(); else document.getElementById('login').classList.remove('hide');
+setInterval(()=>{ if(yo)sincronizar(); },4000);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&yo)sincronizar(); });
+</script>
+</body>
+</html>
