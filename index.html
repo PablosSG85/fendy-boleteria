@@ -162,6 +162,11 @@
   .sinIcon{font-size:52px;}
   .sinTit{font-size:20px; font-weight:800; margin-top:10px;}
   .sinSub{font-size:14px; color:var(--dim); margin-top:8px; line-height:1.5;}
+  /* barra: tarjeta-persona clickable */
+  .pCard{display:flex; align-items:center; justify-content:space-between; gap:14px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:10px; cursor:pointer;}
+  .pCard:active{border-color:var(--sinrec);}
+  .pCard .nombre{font-size:19px; font-weight:800;}
+  .pCard .chips .chip{font-size:12px; padding:3px 9px; border-radius:999px; border:1px solid var(--line); background:var(--card2);}
   .cargando{text-align:center; color:var(--dim); padding:40px 0; font-size:15px;}
 </style>
 </head>
@@ -212,6 +217,12 @@
 </header>
 
 <main>
+  <!-- interruptor Cargar / Controlar (solo admins) -->
+  <div id="modoToggle" class="modo hide" style="margin-bottom:6px">
+    <button id="mCargar" class="modoBtn act" onclick="irA(null,'cargar')">✍️ Cargar</button>
+    <button id="mControlar" class="modoBtn" onclick="irA(null,'controlar')">👁️ Controlar</button>
+  </div>
+
   <!-- ================= SIN NOCHE ================= -->
   <section id="tab-sinNoche" class="hide"></section>
 
@@ -265,7 +276,7 @@
     <div id="listaCarga"></div>
   </section>
 
-  <!-- ================= BOLETERÍA ================= -->
+  <!-- ================= BOLETERÍA — CONTROL ================= -->
   <section id="tab-bole" class="hide">
     <div class="tot" id="totales"></div>
     <div class="searchWrap">
@@ -273,13 +284,70 @@
     </div>
     <div id="listaBole"><div class="cargando">Cargando…</div></div>
   </section>
+
+  <!-- ================= BARRA — CARGA ================= -->
+  <section id="tab-barraCarga" class="hide">
+    <label>Nombre y apellido</label>
+    <input type="text" id="bNombre" list="nombresPrevios" placeholder="Ej: Ailen Villaverde" autocomplete="off">
+    <datalist id="nombresPrevios"></datalist>
+    <div id="bDupAviso"></div>
+
+    <label>Qué consume</label>
+    <div class="chips" id="bTipos"></div>
+
+    <label>Barra / zona (opcional)</label>
+    <div class="chips" id="bZonas"></div>
+
+    <label>Precio</label>
+    <div class="chips" id="bPrecios"></div>
+
+    <label>Cantidad</label>
+    <div class="stepRow">
+      <button class="stepBtn" onclick="bStep(-1)">−</button>
+      <div class="num" id="bCant">1</div>
+      <button class="stepBtn" onclick="bStep(1)">+</button>
+    </div>
+    <div class="ayuda">Si ponés más de 1, se cargan como renglones separados (se retiran por separado).</div>
+
+    <div class="ayuda" id="bFirma"></div>
+    <button class="btnMain" id="bGuardar" onclick="cargarBebida()">CARGAR CONSUMO</button>
+    <div class="resumen" id="bResumen"></div>
+
+    <div class="secTitle">Últimos cargados</div>
+    <div id="bListaCarga"></div>
+  </section>
+
+  <!-- ================= BARRA — CONTROL ================= -->
+  <section id="tab-barraControl" class="hide">
+    <div class="tot" id="barraTot"></div>
+    <div class="searchWrap">
+      <input type="search" id="buscarBarra" placeholder="🔍 Buscar persona…" autocomplete="off" oninput="renderBarra()">
+    </div>
+    <div id="listaBarra"><div class="cargando">Cargando…</div></div>
+    <div id="barraEntregados"></div>
+  </section>
 </main>
+
+<!-- overlay de foco de la barra -->
+<div id="foco" class="modalBg hide"><div class="modalBox" style="max-width:520px">
+  <div class="modalTit" id="fNom"></div>
+  <div class="modalSub">Elegí qué se lleva ahora y confirmá</div>
+  <div id="fBody"></div>
+  <div class="modalBtns">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px">
+      <div><div id="fTotal" style="font-size:24px;font-weight:800;color:var(--pago)">$0</div>
+        <div id="fCant" style="font-size:12px;color:var(--dim)">nada elegido</div></div>
+    </div>
+    <button class="mBtn pri" id="fConfirmar" disabled onclick="confirmarBarra()">✔ Confirmar entrega</button>
+    <button class="mBtn gho" onclick="cerrarFoco()">Cancelar</button>
+  </div>
+</div></div>
 
 <div class="estado hide" id="estado"><span></span></div>
 
 <nav>
-  <button id="nav-carga" class="act hide" onclick="tab('carga')">➕ CARGA</button>
-  <button id="nav-bole" onclick="tab('bole')">🎟️ BOLETERÍA</button>
+  <button id="nav-bole" class="act" onclick="irA('bole',null)">🎟️ BOLETERÍA</button>
+  <button id="nav-barra" onclick="irA('barra',null)">🍸 BARRA</button>
 </nav>
 
 <script>
@@ -797,14 +865,177 @@ async function sincronizar(){
   if(sincronizando||!evento)return;
   sincronizando=true;
   try{
-    items=await api(`/rest/v1/anotados?evento_id=eq.${evento.id}&select=*&order=creado_en.desc`);
+    const veBebidas = esAdmin()||yo.rol==='barra';
+    const tareas=[api(`/rest/v1/anotados?evento_id=eq.${evento.id}&select=*&order=creado_en.desc`)];
+    if(veBebidas)tareas.push(api(`/rest/v1/consumos?evento_id=eq.${evento.id}&select=*&order=creado_en.desc`));
+    const res=await Promise.all(tareas);
+    items=res[0]; if(veBebidas)consumos=res[1]||[];
     aviso('');
     renderCarga(); renderBole();
+    if(veBebidas){ renderBarra(); renderBarraCarga(); llenarDatalist(); }
   }catch(e){ aviso('Sin conexión — reintentando'); }
   finally{ sincronizando=false; }
 }
+/* ================= BARRA / BEBIDAS ================= */
+let consumos=[];
+const BEBIDAS=['COMBO SKYY SABOR','COMBO ABSOLUT SABOR','GREY GOOSE','CONSUMICIÓN','SPEED','CHANDON','PRAVDA','COMBO BRANCA'];
+const ZONAS_BARRA=['VIP','Principal','Terraza','Entre Piso','Zebra'];
+const PRECIOS_BEBIDA=[30000,35000,38000,40000,55000];
+let bTipo='', bZona='', bPrecio=null, bCantN=1, bChipsListos=false;
+function colorTipo(t){
+  const u=(t||'').toUpperCase();
+  const fijos=[['SKYY','#38bdf8'],['ABSOLUT','#a78bfa'],['GREY GOOSE','#fbbf24'],['PRAVDA','#ec4899'],
+    ['CONSUMIC','#2dd4bf'],['SPEED','#fb923c'],['CHANDON','#f9a8d4'],['BRANCA','#f87171'],
+    ['HODLMOS','#a3e635'],['GIN','#34d399'],['CHAMPAGNE','#fcd34d'],['MOET','#fcd34d'],['VEUVE','#fcd34d']];
+  for(const [k,c] of fijos) if(u.includes(k)) return c;
+  const pal=['#f472b6','#60a5fa','#c084fc','#4ade80','#facc15','#fb7185','#22d3ee','#e879f9','#93c5fd'];
+  let h=0; for(let i=0;i<u.length;i++)h=(h*31+u.charCodeAt(i))>>>0; return pal[h%pal.length];
+}
+function bInit(){
+  if(bChipsListos)return; bChipsListos=true;
+  document.getElementById('bTipos').innerHTML=BEBIDAS.map(t=>{const c=colorTipo(t);
+    return `<button type="button" class="chip" data-tipo="${t}" style="border-color:${c};color:${c}" onclick="bPickTipo(this)">${t}</button>`;}).join('')
+    +`<button type="button" class="chip" onclick="bOtroTipo()">Otro…</button>`;
+  document.getElementById('bZonas').innerHTML=ZONAS_BARRA.map(z=>`<button type="button" class="chip" data-zona="${z}" onclick="bPickZona(this)">${z}</button>`).join('');
+  document.getElementById('bPrecios').innerHTML=PRECIOS_BEBIDA.map(p=>`<button type="button" class="chip pago" data-precio="${p}" onclick="bPickPrecio(this,${p})">$${p.toLocaleString('es-AR')}</button>`).join('')
+    +`<button type="button" class="chip free" onclick="bPickPrecio(this,0)">Sin cargo</button>`
+    +`<button type="button" class="chip" onclick="bOtroPrecio()">Otro…</button>`;
+  document.getElementById('bFirma').innerHTML=`Se carga a nombre de <b>${esc(yo.nombre)}</b>.`;
+  document.getElementById('bNombre').oninput=()=>{ bResumen(); bHint(); };
+}
+function bPickTipo(el){ document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bTipo=el.dataset.tipo; bResumen(); }
+function bOtroTipo(){ const v=prompt('¿Qué consume?'); if(v&&v.trim()){ bTipo=v.trim().toUpperCase(); document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel')); bResumen(); aviso('Consumo: '+bTipo,'ok'); } }
+function bPickZona(el){ const on=el.classList.contains('sel'); document.querySelectorAll('#bZonas .chip').forEach(c=>c.classList.remove('sel')); if(!on){el.classList.add('sel'); bZona=el.dataset.zona;} else bZona=''; bResumen(); }
+function bPickPrecio(el,p){ document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bPrecio=p; bResumen(); }
+function bOtroPrecio(){ const v=prompt('Precio por unidad ($):'); if(v!==null){ bPrecio=Math.max(0,parseInt(String(v).replace(/\D/g,''))||0); document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); bResumen(); aviso('Precio: '+(bPrecio?money(bPrecio):'sin cargo'),'ok'); } }
+function bStep(d){ bCantN=Math.max(1,Math.min(30,bCantN+d)); document.getElementById('bCant').textContent=bCantN; bResumen(); }
+function bResumen(){
+  const n=document.getElementById('bNombre').value.trim(); const p=[];
+  if(bTipo)p.push((bCantN>1?bCantN+'× ':'')+bTipo);
+  if(bPrecio!=null)p.push(bPrecio?money(bPrecio)+(bCantN>1?' c/u':''):'sin cargo');
+  if(bZona)p.push(bZona);
+  document.getElementById('bResumen').textContent=(n||'…')+(p.length?' → '+p.join(' · '):'');
+}
+function bHint(){
+  const n=nrm(document.getElementById('bNombre').value);
+  const el=document.getElementById('bDupAviso'); if(n.length<3){el.innerHTML='';return;}
+  const ya=consumos.filter(c=>nrm(c.nombre)===n);
+  el.innerHTML=ya.length?`<div class="dup"><div class="dupTit">🍸 ESTA PERSONA YA TIENE CARGADO</div>${ya.map(c=>`<div class="dupIt">${esc(c.tipo)} — ${c.precio?money(c.precio):'sin cargo'}${c.entregado?' <small style="color:var(--free)">(entregado)</small>':''}</div>`).join('')}</div>`:'';
+}
+async function cargarBebida(){
+  if(!evento)return alert('No hay noche abierta.');
+  const n=document.getElementById('bNombre').value.trim();
+  if(!n)return alert('Falta el nombre.');
+  if(!bTipo)return alert('Elegí qué consume.');
+  if(bPrecio==null)return alert('Elegí el precio (o sin cargo).');
+  const filas=Array.from({length:bCantN},()=>({evento_id:evento.id,nombre:n,tipo:bTipo,zona:bZona,precio:bPrecio}));
+  const cant=filas.length;
+  const btn=document.getElementById('bGuardar'); btn.disabled=true; const txt=btn.textContent; btn.textContent='CARGANDO…';
+  try{
+    await api('/rest/v1/consumos',{method:'POST',body:JSON.stringify(filas)});
+    document.getElementById('bNombre').value=''; bTipo=''; bZona=''; bPrecio=null; bCantN=1;
+    document.getElementById('bCant').textContent='1';
+    document.querySelectorAll('#bTipos .chip,#bZonas .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
+    document.getElementById('bDupAviso').innerHTML=''; bResumen();
+    aviso(cant>1?`${cant} consumos ✓`:'Consumo cargado ✓','ok');
+    await sincronizar(); document.getElementById('bNombre').focus();
+  }catch(e){ alert('No se pudo cargar: '+e.message); }
+  finally{ btn.disabled=false; btn.textContent=txt; }
+}
+function renderBarraCarga(){
+  const el=document.getElementById('bListaCarga'); if(!el)return;
+  el.innerHTML=consumos.slice(0,15).map(c=>{const col=colorTipo(c.tipo);
+    return `<div class="card">
+      <div class="cardTop"><div><div class="nombre">${esc(c.nombre)}</div>
+        <div class="meta">${hora(c)} · cargó ${esc(c.autoriza)}${c.entregado?` · <b style="color:var(--ok)">entregado (${esc(c.entregado_por||'')})</b>`:''}</div></div>
+        <button class="btnDel" onclick="borrarConsumo('${c.id}')">✕</button></div>
+      <div class="badges"><span class="badge" style="border-color:${col};color:${col};background:${col}22">${esc(c.tipo)}</span>
+        ${c.zona?`<span class="badge b-grupo">${esc(c.zona)}</span>`:''}
+        <span class="badge ${c.precio?'b-pago':'b-free'}">${c.precio?money(c.precio):'SIN CARGO'}</span></div>
+    </div>`;}).join('')||'<div class="cargando">Todavía no cargaste bebidas.</div>';
+}
+function borrarConsumo(id){
+  if(!esAdmin())return; const c=consumos.find(x=>x.id===id); if(!c)return;
+  modal('¿Borrar este consumo?',c.nombre+' · '+c.tipo,'',[
+    {txt:'Sí, borrar',tipo:'pri',fn:async()=>{ try{ await api('/rest/v1/consumos?id=eq.'+id,{method:'DELETE'}); consumos=consumos.filter(x=>x.id!==id); renderBarraCarga(); renderBarra(); aviso('Borrado','ok'); }catch(e){aviso(e.message);} }},
+    {txt:'Cancelar',tipo:'gho'}]);
+}
+/* --- barra: control (entregar) --- */
+let focoNom=null, bSel=new Set();
+function renderBarra(){
+  if(document.getElementById('tab-barraControl').classList.contains('hide') && dominio!=='barra'){}
+  const f=(document.getElementById('buscarBarra')?.value||'').trim();
+  const pend=consumos.filter(c=>!c.entregado && (!f||nrm(c.nombre).includes(nrm(f))));
+  const porP={}; pend.forEach(c=>{(porP[c.nombre]=porP[c.nombre]||[]).push(c);});
+  const nombres=Object.keys(porP).sort((a,b)=>a.localeCompare(b,'es'));
+  const lb=document.getElementById('listaBarra'); if(!lb)return;
+  lb.innerHTML=nombres.map(n=>{
+    const its=porP[n], cobrar=its.reduce((a,x)=>a+x.precio,0), g={};
+    its.forEach(c=>g[c.tipo]=(g[c.tipo]||0)+1);
+    const chips=Object.entries(g).map(([t,q])=>{const c=colorTipo(t); return `<span class="chip" style="border-color:${c};color:${c};background:${c}22">${q>1?q+'× ':''}${esc(t)}</span>`;}).join('');
+    return `<div class="pCard" onclick="abrirFoco('${n.replace(/'/g,"\\'")}')">
+      <div><div class="nombre">${esc(n)}</div><div class="chips" style="margin-top:6px">${chips}</div></div>
+      <div style="display:flex;align-items:center;gap:14px"><div style="text-align:right">
+        <div style="font-size:17px;font-weight:800;color:${cobrar>0?'#fb7185':'var(--free)'}">${cobrar>0?money(cobrar):'SIN CARGO'}</div>
+        <div style="font-size:11px;color:var(--dim)">${its.length} por entregar</div></div>
+        <div style="font-size:24px;color:var(--dim)">›</div></div></div>`;
+  }).join('')||`<div class="sinResultados">${f?'Nadie con ese nombre.':'No hay consumos pendientes.'}</div>`;
+  const de=consumos.filter(c=>c.entregado).sort((a,b)=>String(b.entregado_at).localeCompare(String(a.entregado_at)));
+  document.getElementById('barraEntregados').innerHTML=de.length
+    ? `<div class="secTitle">Ya entregados (${de.length})</div>`+de.map(c=>`<div class="repNo" style="display:flex;justify-content:space-between;align-items:center"><span><b>${esc(c.nombre)}</b> · ${esc(c.tipo)} <small style="color:var(--dim)">· ${c.precio?money(c.precio):'sin cargo'}${esAdmin()&&c.entregado_por?' · '+esc(c.entregado_por):''}</small></span><button class="btnUndo" style="flex:none;padding:6px 12px" onclick="deshacerBarra('${c.id}')">↩</button></div>`).join('')
+    : '';
+  const pend2=consumos.filter(c=>!c.entregado);
+  document.getElementById('barraTot').innerHTML=`
+    <div class="totBox"><b>${consumos.length}</b><span>consumos</span></div>
+    <div class="totBox"><b style="color:var(--ok)">${de.length}</b><span>entregados</span></div>
+    <div class="totBox"><b style="color:var(--pago)">${pend2.length}</b><span>pendientes</span></div>
+    <div class="totBox"><b style="color:var(--pago)">${money(pend2.reduce((a,c)=>a+c.precio,0))}</b><span>a cobrar</span></div>`;
+}
+function abrirFoco(n){ focoNom=n; bSel=new Set(); pintarFoco(); document.getElementById('foco').classList.remove('hide'); }
+function cerrarFoco(){ document.getElementById('foco').classList.add('hide'); focoNom=null; bSel.clear(); }
+function pintarFoco(){
+  const its=consumos.filter(c=>!c.entregado && c.nombre===focoNom);
+  document.getElementById('fNom').textContent=focoNom;
+  const g={}; its.forEach(c=>{const k=c.tipo+'|'+c.precio;(g[k]=g[k]||[]).push(c);});
+  document.getElementById('fBody').innerHTML=Object.values(g).map(grp=>{
+    const d=grp[0], q=grp.length, gratis=d.precio===0, eleg=grp.filter(x=>bSel.has(x.id)).length, c=colorTipo(d.tipo);
+    return `<div class="cont" style="border-left-color:${c}">
+      <div class="contInfo"><div class="contLbl" style="color:${c}">${esc(d.tipo)}${d.zona?' · '+esc(d.zona):''}</div>
+        <div class="contNum">${gratis?'<b style="color:var(--free)">sin cargo</b>':'<b>'+money(d.precio)+'</b>'+(q>1?' c/u':'')}</div></div>
+      <button class="contBtn menos" ${eleg===0?'disabled':''} onclick="bPick('${esc(d.tipo).replace(/'/g,"\\'")}',${d.precio},-1)">−</button>
+      <div class="val" style="font-size:20px;font-weight:800;min-width:48px;text-align:center">${eleg}<small style="display:block;font-size:11px;color:var(--dim)">de ${q}</small></div>
+      <button class="contBtn mas" ${eleg>=q?'disabled':''} onclick="bPick('${esc(d.tipo).replace(/'/g,"\\'")}',${d.precio},1)">+</button>
+    </div>`;
+  }).join('');
+  const sel=consumos.filter(c=>bSel.has(c.id)), total=sel.reduce((a,c)=>a+c.precio,0);
+  document.getElementById('fTotal').textContent=sel.length?(total>0?money(total):'SIN CARGO'):'$0';
+  document.getElementById('fCant').textContent=sel.length?`${sel.length} ítem${sel.length>1?'s':''} elegido${sel.length>1?'s':''}`:'nada elegido';
+  document.getElementById('fConfirmar').disabled=sel.length===0;
+}
+function bPick(tipo,precio,delta){
+  const grp=consumos.filter(c=>!c.entregado && c.nombre===focoNom && c.tipo===tipo && c.precio===precio);
+  if(delta>0){ const libre=grp.find(c=>!bSel.has(c.id)); if(libre)bSel.add(libre.id); }
+  else { const ult=[...grp].reverse().find(c=>bSel.has(c.id)); if(ult)bSel.delete(ult.id); }
+  pintarFoco();
+}
+async function confirmarBarra(){
+  const ids=[...bSel]; if(!ids.length)return;
+  try{ await api('/rest/v1/rpc/entregar_consumos',{method:'POST',body:JSON.stringify({p_ids:ids})});
+    cerrarFoco(); aviso('Entregado ✓','ok'); await sincronizar();
+  }catch(e){ alert('No se pudo: '+e.message); }
+}
+async function deshacerBarra(id){
+  try{ const ok=await api('/rest/v1/rpc/desentregar_consumo',{method:'POST',body:JSON.stringify({p_id:id})});
+    if(ok===false)aviso('Eso lo entregó otra barra — no lo podés deshacer'); else await sincronizar();
+  }catch(e){ aviso(e.message); }
+}
+function llenarDatalist(){
+  const dl=document.getElementById('nombresPrevios'); if(!dl)return;
+  const s=new Set(); items.forEach(i=>s.add(i.nombre)); consumos.forEach(c=>s.add(c.nombre));
+  dl.innerHTML=[...s].sort((a,b)=>a.localeCompare(b,'es')).map(n=>`<option value="${esc(n)}">`).join('');
+}
 function pintarQuien(){
-  const rol=esAdmin()?'admin':'boletería';
+  const rol=esAdmin()?'admin':(yo.rol==='barra'?'barra':'boletería');
   const est=(yo&&yo.rol==='boleteria'&&miEstacion)?` · <b style="color:var(--txt)">${esc(miEstacion)}</b>`:'';
   document.getElementById('quien').innerHTML=
     `${esc(yo.nombre)} <small>· ${rol}${est}</small><button onclick="menu()" title="Opciones">⋯</button>`;
@@ -820,7 +1051,6 @@ async function arrancar(){
     yo=perf[0];
     document.getElementById('login').classList.add('hide');
     pintarQuien();
-    document.getElementById('nav-carga').classList.toggle('hide',!esAdmin());
     document.getElementById('firmaAut').innerHTML=`Se anota como autorizado por <b>${esc(yo.nombre)}</b>.`;
     // la boletería tiene que elegir su puesto (Arriba/Abajo) una vez por dispositivo
     if(yo.rol==='boleteria' && !miEstacion) setTimeout(elegirEstacion,300);
@@ -847,14 +1077,16 @@ async function tick(){
 }
 function entrarModoNoche(){
   document.getElementById('tab-sinNoche').classList.add('hide');
-  document.querySelector('nav').classList.remove('hide');
   document.getElementById('evFecha').textContent='Evento: '+fechaCorta(evento.fecha);
-  tab(esAdmin()?'carga':'bole');
+  document.querySelector('nav').classList.toggle('hide', !esAdmin());   // el personal no ve la nav
+  if(yo.rol==='boleteria') irA('bole','controlar');
+  else if(yo.rol==='barra') irA('barra','controlar');
+  else irA('bole','cargar');
 }
 function entrarModoSinNoche(){
-  items=[];
-  document.getElementById('tab-carga').classList.add('hide');
-  document.getElementById('tab-bole').classList.add('hide');
+  items=[]; consumos=[];
+  ['tab-carga','tab-bole','tab-barraCarga','tab-barraControl'].forEach(id=>document.getElementById(id).classList.add('hide'));
+  document.getElementById('modoToggle').classList.add('hide');
   document.querySelector('nav').classList.add('hide');
   document.getElementById('evFecha').textContent='Sin noche abierta';
   document.getElementById('tab-sinNoche').classList.remove('hide');
@@ -999,14 +1231,28 @@ function borrar(id){
 }
 
 /* ---------- navegación ---------- */
-function tab(t){
-  if(t==='carga'&&!esAdmin())t='bole';
-  document.getElementById('tab-carga').classList.toggle('hide',t!=='carga');
-  document.getElementById('tab-bole').classList.toggle('hide',t!=='bole');
-  document.getElementById('nav-carga').classList.toggle('act',t==='carga');
-  document.getElementById('nav-bole').classList.toggle('act',t==='bole');
-  if(t==='bole')renderBole();
+let dominio='bole', modo='cargar';
+function irA(dom, mod){
+  if(!yo)return;
+  if(yo.rol==='boleteria'){ dominio='bole'; modo='controlar'; }
+  else if(yo.rol==='barra'){ dominio='barra'; modo='controlar'; }
+  else { if(dom)dominio=dom; if(mod)modo=mod; }
+  const secc = dominio==='bole' ? (modo==='cargar'?'tab-carga':'tab-bole')
+                                : (modo==='cargar'?'tab-barraCarga':'tab-barraControl');
+  ['tab-carga','tab-bole','tab-barraCarga','tab-barraControl'].forEach(id=>
+    document.getElementById(id).classList.toggle('hide', id!==secc));
+  document.getElementById('tab-sinNoche').classList.add('hide');
+  document.getElementById('nav-bole').classList.toggle('act', dominio==='bole');
+  document.getElementById('nav-barra').classList.toggle('act', dominio==='barra');
+  document.getElementById('modoToggle').classList.toggle('hide', !esAdmin());
+  document.getElementById('mCargar').classList.toggle('act', modo==='cargar');
+  document.getElementById('mControlar').classList.toggle('act', modo==='controlar');
+  if(secc==='tab-bole')renderBole();
+  else if(secc==='tab-barraControl')renderBarra();
+  else if(secc==='tab-barraCarga'){ bInit(); bResumen(); }
 }
+// compatibilidad: viejas llamadas a tab('carga'/'bole')
+function tab(t){ irA('bole', t==='carga'?'cargar':'controlar'); }
 
 /* ---------- arranque + sincronización ---------- */
 if(ses&&ses.access_token)arrancar(); else document.getElementById('login').classList.remove('hide');
