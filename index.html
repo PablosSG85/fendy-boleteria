@@ -156,6 +156,12 @@
   .histSub{font-size:12px; color:var(--dim); margin-top:3px;}
   .histFlecha{font-size:22px; color:var(--dim); flex:none;}
   .histAbierta{background:var(--freebg); color:var(--free); border:1px solid var(--free); font-size:10px; font-weight:800; padding:2px 7px; border-radius:6px; vertical-align:middle; margin-left:4px;}
+  input[type=date]{width:100%; background:var(--card); border:1px solid var(--line); border-radius:12px; color:var(--txt); font-size:18px; padding:13px 14px; outline:none; font-family:inherit;}
+  input[type=date]:focus{border-color:var(--accent);}
+  .sinBox{text-align:center; padding:40px 12px 20px;}
+  .sinIcon{font-size:52px;}
+  .sinTit{font-size:20px; font-weight:800; margin-top:10px;}
+  .sinSub{font-size:14px; color:var(--dim); margin-top:8px; line-height:1.5;}
   .cargando{text-align:center; color:var(--dim); padding:40px 0; font-size:15px;}
 </style>
 </head>
@@ -206,6 +212,9 @@
 </header>
 
 <main>
+  <!-- ================= SIN NOCHE ================= -->
+  <section id="tab-sinNoche" class="hide"></section>
+
   <!-- ================= CARGA ================= -->
   <section id="tab-carga" class="hide">
     <label>Nombre y apellido</label>
@@ -359,9 +368,8 @@ function salir(){
 function menu(){
   const b=[{txt:'🔑 Cambiar mi contraseña',tipo:'sec',fn:pedirNuevaClave}];
   if(esAdmin()){
-    b.push({txt:'📊 Reporte / cerrar noche',tipo:'sec',fn:verReporte});
+    if(evento)b.push({txt:'📊 Reporte / cerrar noche',tipo:'sec',fn:verReporte});
     b.push({txt:'🗂️ Noches anteriores',tipo:'sec',fn:verHistorico});
-    b.push({txt:'🌙 Abrir una noche nueva',tipo:'sec',fn:pedirNuevaNoche});
   }
   b.push({txt:'⏻ Cerrar sesión',tipo:'sec',fn:salir});
   b.push({txt:'Cerrar',tipo:'gho'});
@@ -380,19 +388,19 @@ function pedirNuevaClave(){
         }catch(e){alert(e.message);}
       }},{txt:'Cancelar',tipo:'gho'}]);
 }
-function pedirNuevaNoche(){
-  modal('Abrir una noche nueva','La lista de hoy se archiva y arrancás con la lista vacía.',
-    `<label>Fecha del evento</label><input type="text" id="nfecha" value="${new Date().toISOString().slice(0,10)}">
-     <div class="ayuda">Formato: AAAA-MM-DD</div>`,
-    [{txt:'Abrir esa noche',tipo:'pri',mantener:true,accion:async()=>{
-        const f=document.getElementById('nfecha').value.trim();
-        if(!/^\d{4}-\d{2}-\d{2}$/.test(f))return alert('Fecha inválida.');
+function hoyISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function abrirNoche(){
+  if(!esAdmin())return;
+  modal('🌙 Abrir una noche','Elegí la fecha del evento. Aunque sea la madrugada del domingo, usá la fecha del sábado.',
+    `<label>Fecha del evento</label><input type="date" id="nfecha" value="${hoyISO()}">`,
+    [{txt:'Abrir esta noche',tipo:'pri',mantener:true,accion:async()=>{
+        const f=document.getElementById('nfecha').value;
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(f))return alert('Elegí una fecha.');
         try{
-          if(evento)await api('/rest/v1/eventos?id=eq.'+evento.id,{method:'PATCH',body:JSON.stringify({abierto:false})});
           await api('/rest/v1/eventos',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},
             body:JSON.stringify({fecha:f,nombre:'Evento '+f,abierto:true})});
-          cerrarModal(); await arrancar();
-        }catch(e){alert(e.message);}
+          cerrarModal(); await tick(); aviso('Noche abierta ✓','ok');
+        }catch(e){alert('No se pudo abrir: '+e.message);}
       }},{txt:'Cancelar',tipo:'gho'}]);
 }
 
@@ -536,8 +544,7 @@ function confirmarCerrar(){
         const rep=await api('/rest/v1/rpc/reporte_noche',{method:'POST',
           body:JSON.stringify({p_evento:evento.id,p_cerrar:true})});
         repActual=rep;
-        evento=null; items=[]; renderCarga(); renderBole();
-        document.getElementById('evFecha').textContent='Sin evento abierto';
+        evento=null; entrarModoSinNoche();
         renderReporte(rep,{cerrada:true});
         aviso('Noche cerrada ✓','ok');
       }catch(e){ alert('No se pudo cerrar: '+e.message); }
@@ -788,19 +795,70 @@ async function arrancar(){
     const perf=await api('/rest/v1/perfiles?select=nombre,rol&id=eq.'+uid);
     if(!perf.length)throw new Error('Tu cuenta no tiene perfil asignado.');
     yo=perf[0];
-    const evs=await api('/rest/v1/eventos?abierto=eq.true&select=*&order=fecha.desc&limit=1');
-    evento=evs[0]||null;
     document.getElementById('login').classList.add('hide');
     document.getElementById('quien').innerHTML=
       `${esc(yo.nombre)} <small>· ${esAdmin()?'admin':'boletería'}</small><button onclick="menu()" title="Opciones">⋯</button>`;
     document.getElementById('nav-carga').classList.toggle('hide',!esAdmin());
     document.getElementById('firmaAut').innerHTML=`Se anota como autorizado por <b>${esc(yo.nombre)}</b>.`;
-    document.getElementById('evFecha').textContent=evento
-      ? 'Evento: '+new Date(evento.fecha+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'2-digit'})
-      : 'Sin evento abierto';
-    tab(esAdmin()?'carga':'bole');
-    await sincronizar();
+    evento=null; primerTick=true;
+    await tick();
   }catch(e){ errLogin(e.message); cerrarSesion(); }
+}
+const fechaCorta=f=>new Date(f+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'2-digit'});
+let primerTick=true;
+// Cada tick revisa si hay noche abierta y cambia de modo solo (una la abre, todos la ven)
+async function tick(){
+  if(!yo)return;
+  try{
+    const evs=await api('/rest/v1/eventos?abierto=eq.true&select=*&order=fecha.desc&limit=1');
+    const abierto=evs[0]||null;
+    const cambio=(abierto?abierto.id:null)!==(evento?evento.id:null);
+    if(cambio||primerTick){
+      primerTick=false;
+      evento=abierto;
+      if(evento)entrarModoNoche(); else entrarModoSinNoche();
+    }
+    if(evento)await sincronizar();
+  }catch(e){ /* sin conexión: no rompemos, reintenta al próximo tick */ }
+}
+function entrarModoNoche(){
+  document.getElementById('tab-sinNoche').classList.add('hide');
+  document.querySelector('nav').classList.remove('hide');
+  document.getElementById('evFecha').textContent='Evento: '+fechaCorta(evento.fecha);
+  tab(esAdmin()?'carga':'bole');
+}
+function entrarModoSinNoche(){
+  items=[];
+  document.getElementById('tab-carga').classList.add('hide');
+  document.getElementById('tab-bole').classList.add('hide');
+  document.querySelector('nav').classList.add('hide');
+  document.getElementById('evFecha').textContent='Sin noche abierta';
+  document.getElementById('tab-sinNoche').classList.remove('hide');
+  renderSinNoche();
+}
+async function renderSinNoche(){
+  const cont=document.getElementById('tab-sinNoche');
+  if(!esAdmin()){
+    cont.innerHTML=`<div class="sinBox"><div class="sinIcon">🌙</div>
+      <div class="sinTit">Todavía no hay una noche abierta</div>
+      <div class="sinSub">Esperá a que un socio la abra.<br>La pantalla se actualiza sola.</div></div>`;
+    return;
+  }
+  cont.innerHTML=`<div class="sinBox"><div class="sinIcon">🌙</div>
+      <div class="sinTit">No hay ninguna noche abierta</div>
+      <div class="sinSub">Abrí una para empezar a anotar.</div></div>
+    <button class="btnMain" onclick="abrirNoche()">🌙 Abrir una noche</button>
+    <div class="repSec">Noches anteriores</div>
+    <div id="sinHist"><div class="cargando">Cargando…</div></div>`;
+  try{
+    const lista=await api('/rest/v1/rpc/historico_noches',{method:'POST',body:'{}'});
+    document.getElementById('sinHist').innerHTML = lista.length ? lista.map(n=>`
+      <button class="histItem" onclick="abrirReporteHistorico('${n.id}',${n.abierto})">
+        <div><div class="histFecha">${fechaLarga(n.fecha)}</div>
+        <div class="histSub">${n.personas} anotados · ${n.ingresaron} entraron · ${money(n.recaudado)}</div></div>
+        <div class="histFlecha">›</div></button>`).join('')
+      : '<div class="repNo"><span style="color:var(--dim)">Todavía no hay noches registradas.</span></div>';
+  }catch(e){ document.getElementById('sinHist').innerHTML='<div class="cargando">No se pudo cargar el histórico.</div>'; }
 }
 
 /* ---------- render ---------- */
@@ -925,8 +983,8 @@ function tab(t){
 
 /* ---------- arranque + sincronización ---------- */
 if(ses&&ses.access_token)arrancar(); else document.getElementById('login').classList.remove('hide');
-setInterval(()=>{ if(yo)sincronizar(); },4000);
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&yo)sincronizar(); });
+setInterval(()=>{ if(yo)tick(); },4000);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&yo)tick(); });
 </script>
 </body>
 </html>
