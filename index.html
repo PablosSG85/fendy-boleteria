@@ -291,6 +291,15 @@ const KS='fendy_bol_sesion';
 let ses=null, yo=null, evento=null, items=[], sincronizando=false;
 try{ses=JSON.parse(localStorage.getItem(KS)||'null');}catch(e){}
 const esAdmin=()=>!!yo&&yo.rol==='admin';
+// Estación (puesto): qué boletería es esta compu/celu. Se guarda por dispositivo.
+const ESTACIONES_BOLE=['Arriba','Abajo'];
+let miEstacion=localStorage.getItem('fendy_estacion')||'';
+function elegirEstacion(){
+  const btns=ESTACIONES_BOLE.map(e=>({txt:'🚪 Boletería '+e,tipo:'pri',fn:()=>{
+    miEstacion=e; localStorage.setItem('fendy_estacion',e); pintarQuien(); aviso('Boletería '+e+' ✓','ok');
+  }}));
+  modal('¿En qué boletería estás?','Elegí tu puesto. Queda guardado en esta compu/celu; lo podés cambiar cuando quieras.','',btns);
+}
 const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
 /* ---------- conexión ---------- */
@@ -367,6 +376,7 @@ function salir(){
 }
 function menu(){
   const b=[{txt:'🔑 Cambiar mi contraseña',tipo:'sec',fn:pedirNuevaClave}];
+  if(yo.rol==='boleteria')b.push({txt:'🚪 Cambiar boletería (Arriba/Abajo)',tipo:'sec',fn:elegirEstacion});
   if(esAdmin()){
     if(evento)b.push({txt:'📊 Reporte / cerrar noche',tipo:'sec',fn:verReporte});
     b.push({txt:'🗂️ Noches anteriores',tipo:'sec',fn:verHistorico});
@@ -510,6 +520,13 @@ function renderReporte(rep,opts){
       ${rank('💸 Más sin recargo',r.mas_descuento)}
       ${rankRec}
     </div>`;
+
+  const bol=(rep.por_boleteria||[]).filter(x=>x.estacion&&x.estacion!=='—');
+  if(bol.length)
+    h+=`<div class="repSec">Ingresos por boletería</div>
+      <div style="overflow-x:auto"><table class="repTable">
+        <thead><tr><th>Boletería</th><th>Ingresos marcados</th></tr></thead>
+        <tbody>${bol.map(x=>`<tr><td><b>🚪 ${esc(x.estacion)}</b></td><td>${x.ingresos}</td></tr>`).join('')}</tbody></table></div>`;
 
   h+=`<div class="repSec">Por socio${rep.atribucion_confiable?'':' (referencial)'}</div>
     <div style="overflow-x:auto"><table class="repTable">
@@ -786,6 +803,12 @@ async function sincronizar(){
   }catch(e){ aviso('Sin conexión — reintentando'); }
   finally{ sincronizando=false; }
 }
+function pintarQuien(){
+  const rol=esAdmin()?'admin':'boletería';
+  const est=(yo&&yo.rol==='boleteria'&&miEstacion)?` · <b style="color:var(--txt)">${esc(miEstacion)}</b>`:'';
+  document.getElementById('quien').innerHTML=
+    `${esc(yo.nombre)} <small>· ${rol}${est}</small><button onclick="menu()" title="Opciones">⋯</button>`;
+}
 async function arrancar(){
   try{
     const uid=miId();
@@ -796,10 +819,11 @@ async function arrancar(){
     if(!perf.length)throw new Error('Tu cuenta no tiene perfil asignado.');
     yo=perf[0];
     document.getElementById('login').classList.add('hide');
-    document.getElementById('quien').innerHTML=
-      `${esc(yo.nombre)} <small>· ${esAdmin()?'admin':'boletería'}</small><button onclick="menu()" title="Opciones">⋯</button>`;
+    pintarQuien();
     document.getElementById('nav-carga').classList.toggle('hide',!esAdmin());
     document.getElementById('firmaAut').innerHTML=`Se anota como autorizado por <b>${esc(yo.nombre)}</b>.`;
+    // la boletería tiene que elegir su puesto (Arriba/Abajo) una vez por dispositivo
+    if(yo.rol==='boleteria' && !miEstacion) setTimeout(elegirEstacion,300);
     evento=null; primerTick=true;
     await tick();
   }catch(e){ errLogin(e.message); cerrarSesion(); }
@@ -939,20 +963,23 @@ function card(it){
 /* ---------- acciones ---------- */
 async function mover(id,campo,delta){
   const it=items.find(x=>x.id===id); if(!it)return;
+  if(delta===1 && !esAdmin() && yo.rol==='boleteria' && !miEstacion){ elegirEstacion(); return; }
   const c=CONDS.find(x=>x.k===campo);
   const prev=it[c.ing];
   it[c.ing]=Math.max(0,Math.min(it[campo],prev+delta));   // respuesta inmediata
   renderBole(); renderCarga();
   try{
     const r=await api('/rest/v1/rpc/marcar_ingreso',{method:'POST',
-      body:JSON.stringify({p_anotado:id,p_campo:campo,p_delta:delta})});
-    Object.assign(it,r); renderBole(); renderCarga();
+      body:JSON.stringify({p_anotado:id,p_campo:campo,p_delta:delta,p_estacion:miEstacion})});
+    Object.assign(it,r.ficha); renderBole(); renderCarga();
+    if(r.no_era_tuyo) aviso('Ese ingreso lo marcó la otra boletería — no lo podés deshacer');
   }catch(e){ it[c.ing]=prev; renderBole(); renderCarga(); aviso('No se pudo marcar: '+e.message); }
 }
 async function todos(id){
   const it=items.find(x=>x.id===id); if(!it)return;
-  try{ const r=await api('/rest/v1/rpc/marcar_todos',{method:'POST',body:JSON.stringify({p_anotado:id})});
-    Object.assign(it,r); renderBole(); renderCarga();
+  if(!esAdmin() && yo.rol==='boleteria' && !miEstacion){ elegirEstacion(); return; }
+  try{ const r=await api('/rest/v1/rpc/marcar_todos',{method:'POST',body:JSON.stringify({p_anotado:id,p_estacion:miEstacion})});
+    Object.assign(it,r.ficha); renderBole(); renderCarga();
   }catch(e){ aviso('No se pudo marcar: '+e.message); }
 }
 function borrar(id){
