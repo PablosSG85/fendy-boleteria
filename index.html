@@ -961,7 +961,7 @@ function borrarConsumo(id){
     {txt:'Cancelar',tipo:'gho'}]);
 }
 /* --- barra: control (entregar) --- */
-let focoNom=null, bSel=new Set();
+let focoNom=null, bSel=new Set(), focoGrupos=[];
 function renderBarra(){
   if(document.getElementById('tab-barraControl').classList.contains('hide') && dominio!=='barra'){}
   const f=(document.getElementById('buscarBarra')?.value||'').trim();
@@ -973,7 +973,7 @@ function renderBarra(){
     const its=porP[n], cobrar=its.reduce((a,x)=>a+x.precio,0), g={};
     its.forEach(c=>g[c.tipo]=(g[c.tipo]||0)+1);
     const chips=Object.entries(g).map(([t,q])=>{const c=colorTipo(t); return `<span class="chip" style="border-color:${c};color:${c};background:${c}22">${q>1?q+'× ':''}${esc(t)}</span>`;}).join('');
-    return `<div class="pCard" onclick="abrirFoco('${n.replace(/'/g,"\\'")}')">
+    return `<div class="pCard" data-nombre="${esc(n)}" onclick="abrirFoco(this.dataset.nombre)">
       <div><div class="nombre">${esc(n)}</div><div class="chips" style="margin-top:6px">${chips}</div></div>
       <div style="display:flex;align-items:center;gap:14px"><div style="text-align:right">
         <div style="font-size:17px;font-weight:800;color:${cobrar>0?'#fb7185':'var(--free)'}">${cobrar>0?money(cobrar):'SIN CARGO'}</div>
@@ -997,14 +997,15 @@ function pintarFoco(){
   const its=consumos.filter(c=>!c.entregado && c.nombre===focoNom);
   document.getElementById('fNom').textContent=focoNom;
   const g={}; its.forEach(c=>{const k=c.tipo+'|'+c.precio;(g[k]=g[k]||[]).push(c);});
-  document.getElementById('fBody').innerHTML=Object.values(g).map(grp=>{
+  focoGrupos=Object.values(g);   // guardamos los grupos para bPick por índice (sin interpolar texto)
+  document.getElementById('fBody').innerHTML=focoGrupos.map((grp,idx)=>{
     const d=grp[0], q=grp.length, gratis=d.precio===0, eleg=grp.filter(x=>bSel.has(x.id)).length, c=colorTipo(d.tipo);
     return `<div class="cont" style="border-left-color:${c}">
       <div class="contInfo"><div class="contLbl" style="color:${c}">${esc(d.tipo)}${d.zona?' · '+esc(d.zona):''}</div>
         <div class="contNum">${gratis?'<b style="color:var(--free)">sin cargo</b>':'<b>'+money(d.precio)+'</b>'+(q>1?' c/u':'')}</div></div>
-      <button class="contBtn menos" ${eleg===0?'disabled':''} onclick="bPick('${esc(d.tipo).replace(/'/g,"\\'")}',${d.precio},-1)">−</button>
+      <button class="contBtn menos" ${eleg===0?'disabled':''} onclick="bPick(${idx},-1)">−</button>
       <div class="val" style="font-size:20px;font-weight:800;min-width:48px;text-align:center">${eleg}<small style="display:block;font-size:11px;color:var(--dim)">de ${q}</small></div>
-      <button class="contBtn mas" ${eleg>=q?'disabled':''} onclick="bPick('${esc(d.tipo).replace(/'/g,"\\'")}',${d.precio},1)">+</button>
+      <button class="contBtn mas" ${eleg>=q?'disabled':''} onclick="bPick(${idx},1)">+</button>
     </div>`;
   }).join('');
   const sel=consumos.filter(c=>bSel.has(c.id)), total=sel.reduce((a,c)=>a+c.precio,0);
@@ -1012,8 +1013,8 @@ function pintarFoco(){
   document.getElementById('fCant').textContent=sel.length?`${sel.length} ítem${sel.length>1?'s':''} elegido${sel.length>1?'s':''}`:'nada elegido';
   document.getElementById('fConfirmar').disabled=sel.length===0;
 }
-function bPick(tipo,precio,delta){
-  const grp=consumos.filter(c=>!c.entregado && c.nombre===focoNom && c.tipo===tipo && c.precio===precio);
+function bPick(idx,delta){
+  const grp=focoGrupos[idx]; if(!grp)return;
   if(delta>0){ const libre=grp.find(c=>!bSel.has(c.id)); if(libre)bSel.add(libre.id); }
   else { const ult=[...grp].reverse().find(c=>bSel.has(c.id)); if(ult)bSel.delete(ult.id); }
   pintarFoco();
