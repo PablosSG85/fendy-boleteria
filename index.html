@@ -292,23 +292,24 @@
     <datalist id="nombresPrevios"></datalist>
     <div id="bDupAviso"></div>
 
-    <label>Qué consume</label>
+    <div class="secTitle">Pedido de esta persona</div>
+    <div id="bCarrito"></div>
+
+    <label>Agregar un consumo</label>
     <div class="chips" id="bTipos"></div>
-
-    <label>Precio / cambio</label>
+    <label style="margin-top:12px">Precio / cambio</label>
     <div class="chips" id="bPrecios"></div>
-
-    <label>Cantidad</label>
+    <label style="margin-top:12px">Cantidad</label>
     <div class="stepRow">
       <button class="stepBtn" onclick="bStep(-1)">−</button>
       <div class="num" id="bCant">1</div>
       <button class="stepBtn" onclick="bStep(1)">+</button>
     </div>
-    <div class="ayuda">Si ponés más de 1, se cargan como renglones separados (se retiran por separado).</div>
+    <button class="mBtn sec" style="width:100%;margin-top:14px" onclick="bAgregar()">➕ Agregar al pedido</button>
+    <div class="resumen" id="bResumen"></div>
 
     <div class="ayuda" id="bFirma"></div>
-    <button class="btnMain" id="bGuardar" onclick="cargarBebida()">CARGAR CONSUMO</button>
-    <div class="resumen" id="bResumen"></div>
+    <button class="btnMain" id="bGuardar" onclick="cargarBebida()">✔ CARGAR PEDIDO</button>
 
     <div class="secTitle">Últimos cargados</div>
     <div id="bListaCarga"></div>
@@ -877,7 +878,7 @@ async function sincronizar(){
 let consumos=[];
 const BEBIDAS=['COMBO SKYY SABOR','COMBO ABSOLUT SABOR','GREY GOOSE','CONSUMICIÓN','SPEED','CHANDON','PRAVDA','COMBO BRANCA'];
 const PRECIOS_BEBIDA=[30000,35000,38000,40000,55000];
-let bTipo='', bPrecio=null, bCambio='', bCantN=1, bChipsListos=false;
+let bTipo='', bPrecio=null, bCambio='', bCantN=1, bChipsListos=false, carrito=[];
 function colorTipo(t){
   const u=(t||'').toUpperCase();
   const fijos=[['SKYY','#38bdf8'],['ABSOLUT','#a78bfa'],['GREY GOOSE','#fbbf24'],['PRAVDA','#ec4899'],
@@ -914,11 +915,31 @@ function bUpgrade(){
 }
 function bStep(d){ bCantN=Math.max(1,Math.min(30,bCantN+d)); document.getElementById('bCant').textContent=bCantN; bResumen(); }
 function bResumen(){
-  const n=document.getElementById('bNombre').value.trim(); const p=[];
+  const p=[];
   if(bTipo)p.push((bCantN>1?bCantN+'× ':'')+bTipo);
   if(bCambio)p.push('🔄 upgrade'+(bCambio&&bCambio!=='—'?' de '+bCambio:''));
   else if(bPrecio!=null)p.push(bPrecio?money(bPrecio)+(bCantN>1?' c/u':''):'sin cargo');
-  document.getElementById('bResumen').textContent=(n||'…')+(p.length?' → '+p.join(' · '):'');
+  document.getElementById('bResumen').textContent=p.length?'A agregar: '+p.join(' · '):'';
+}
+function bAgregar(){
+  if(!bTipo)return alert('Elegí qué consume.');
+  if(bPrecio==null && !bCambio)return alert('Elegí el precio, sin cargo, o upgrade.');
+  carrito.push({tipo:bTipo, precio:bCambio?0:bPrecio, cambio:bCambio, cant:bCantN});
+  bTipo=''; bPrecio=null; bCambio=''; bCantN=1; document.getElementById('bCant').textContent='1';
+  document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
+  renderCarrito(); bResumen();
+}
+function bQuitar(i){ carrito.splice(i,1); renderCarrito(); }
+function renderCarrito(){
+  const el=document.getElementById('bCarrito'); if(!el)return;
+  if(!carrito.length){ el.innerHTML='<div class="cargando" style="padding:14px 0">Elegí abajo qué se lleva y tocá “Agregar al pedido” 👇</div>'; return; }
+  el.innerHTML=carrito.map((it,i)=>{const col=colorTipo(it.tipo);
+    const detalle = it.cambio ? `🔄 UPGRADE${it.cambio!=='—'?' de '+esc(it.cambio):''}`
+      : it.precio ? money(it.precio)+(it.cant>1?' c/u · total '+money(it.precio*it.cant):'') : 'SIN CARGO';
+    return `<div class="card" style="margin-bottom:8px"><div class="cardTop">
+      <div><div class="nombre" style="font-size:17px">${it.cant>1?it.cant+'× ':''}<span style="color:${col}">${esc(it.tipo)}</span></div>
+        <div class="meta">${detalle}</div></div>
+      <button class="btnDel" onclick="bQuitar(${i})">✕</button></div></div>`;}).join('');
 }
 function bHint(){
   const n=nrm(document.getElementById('bNombre').value);
@@ -930,18 +951,20 @@ async function cargarBebida(){
   if(!evento)return alert('No hay noche abierta.');
   const n=document.getElementById('bNombre').value.trim();
   if(!n)return alert('Falta el nombre.');
-  if(!bTipo)return alert('Elegí qué consume.');
-  if(bPrecio==null && !bCambio)return alert('Elegí el precio, sin cargo, o upgrade.');
-  const filas=Array.from({length:bCantN},()=>({evento_id:evento.id,nombre:n,tipo:bTipo,precio:bCambio?0:bPrecio,cambio:bCambio}));
+  // si quedó un ítem a medio elegir sin agregar, lo sumamos solo
+  if(bTipo && (bPrecio!=null || bCambio)) bAgregar();
+  if(!carrito.length)return alert('Agregá al menos un consumo al pedido.');
+  const filas=[];
+  carrito.forEach(it=>{ for(let k=0;k<it.cant;k++) filas.push({evento_id:evento.id,nombre:n,tipo:it.tipo,precio:it.cambio?0:it.precio,cambio:it.cambio}); });
   const cant=filas.length;
   const btn=document.getElementById('bGuardar'); btn.disabled=true; const txt=btn.textContent; btn.textContent='CARGANDO…';
   try{
     await api('/rest/v1/consumos',{method:'POST',body:JSON.stringify(filas)});
-    document.getElementById('bNombre').value=''; bTipo=''; bPrecio=null; bCambio=''; bCantN=1;
+    document.getElementById('bNombre').value=''; carrito=[]; bTipo=''; bPrecio=null; bCambio=''; bCantN=1;
     document.getElementById('bCant').textContent='1';
     document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
-    document.getElementById('bDupAviso').innerHTML=''; bResumen();
-    aviso(cant>1?`${cant} consumos ✓`:'Consumo cargado ✓','ok');
+    document.getElementById('bDupAviso').innerHTML=''; renderCarrito(); bResumen();
+    aviso(cant>1?`${cant} consumos cargados ✓`:'Consumo cargado ✓','ok');
     await sincronizar(); document.getElementById('bNombre').focus();
   }catch(e){ alert('No se pudo cargar: '+e.message); }
   finally{ btn.disabled=false; btn.textContent=txt; }
@@ -1257,7 +1280,7 @@ function irA(dom, mod){
   document.getElementById('mControlar').classList.toggle('act', modo==='controlar');
   if(secc==='tab-bole')renderBole();
   else if(secc==='tab-barraControl')renderBarra();
-  else if(secc==='tab-barraCarga'){ bInit(); bResumen(); }
+  else if(secc==='tab-barraCarga'){ bInit(); renderCarrito(); bResumen(); }
 }
 // compatibilidad: viejas llamadas a tab('carga'/'bole')
 function tab(t){ irA('bole', t==='carga'?'cargar':'controlar'); }
