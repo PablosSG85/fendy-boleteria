@@ -304,9 +304,9 @@
       <button class="stepBtn" onclick="bStep(-1)">−</button>
       <div class="num" id="bCant">1</div>
       <button class="stepBtn" onclick="bStep(1)">+</button>
+      <div id="bResumen" style="flex:1; text-align:left; font-size:18px; font-weight:800; line-height:1.25; margin-left:8px; min-height:26px;"></div>
     </div>
-    <button class="mBtn sec" style="width:100%;margin-top:14px" onclick="bAgregar()">➕ Agregar al pedido</button>
-    <div class="resumen" id="bResumen"></div>
+    <button class="btnMain" id="bAgregarBtn" style="margin-top:14px; background:var(--card2); border:1px solid var(--sinrec); color:var(--sinrec); font-size:19px;" onclick="bAgregar()">➕ Agregar al pedido</button>
 
     <div class="ayuda" id="bFirma"></div>
     <button class="btnMain" id="bGuardar" onclick="cargarBebida()">✔ CARGAR PEDIDO</button>
@@ -915,11 +915,13 @@ function bUpgrade(){
 }
 function bStep(d){ bCantN=Math.max(1,Math.min(30,bCantN+d)); document.getElementById('bCant').textContent=bCantN; bResumen(); }
 function bResumen(){
-  const p=[];
-  if(bTipo)p.push((bCantN>1?bCantN+'× ':'')+bTipo);
-  if(bCambio)p.push('🔄 upgrade'+(bCambio&&bCambio!=='—'?' de '+bCambio:''));
-  else if(bPrecio!=null)p.push(bPrecio?money(bPrecio)+(bCantN>1?' c/u':''):'sin cargo');
-  document.getElementById('bResumen').textContent=p.length?'A agregar: '+p.join(' · '):'';
+  const el=document.getElementById('bResumen'); if(!el)return;
+  if(!bTipo){ el.innerHTML='<span style="color:var(--dim);font-weight:600;font-size:15px">Elegí el trago…</span>'; return; }
+  const col=colorTipo(bTipo);
+  let det='';
+  if(bCambio) det=`<span style="color:var(--ext)">🔄 upgrade${bCambio&&bCambio!=='—'?' de '+esc(bCambio):''}</span>`;
+  else if(bPrecio!=null) det= bPrecio ? `<span style="color:var(--pago)">${money(bPrecio)}${bCantN>1?' c/u':''}</span>` : `<span style="color:var(--free)">sin cargo</span>`;
+  el.innerHTML=`<span style="color:${col}">${bCantN>1?bCantN+'× ':''}${esc(bTipo)}</span>${det?'<br>'+det:''}`;
 }
 function bAgregar(){
   if(!bTipo)return alert('Elegí qué consume.');
@@ -934,11 +936,12 @@ function renderCarrito(){
   const el=document.getElementById('bCarrito'); if(!el)return;
   if(!carrito.length){ el.innerHTML='<div class="cargando" style="padding:14px 0">Elegí abajo qué se lleva y tocá “Agregar al pedido” 👇</div>'; return; }
   el.innerHTML=carrito.map((it,i)=>{const col=colorTipo(it.tipo);
+    const dCol = it.cambio ? 'var(--ext)' : it.precio ? 'var(--pago)' : 'var(--free)';
     const detalle = it.cambio ? `🔄 UPGRADE${it.cambio!=='—'?' de '+esc(it.cambio):''}`
       : it.precio ? money(it.precio)+(it.cant>1?' c/u · total '+money(it.precio*it.cant):'') : 'SIN CARGO';
     return `<div class="card" style="margin-bottom:8px"><div class="cardTop">
-      <div><div class="nombre" style="font-size:17px">${it.cant>1?it.cant+'× ':''}<span style="color:${col}">${esc(it.tipo)}</span></div>
-        <div class="meta">${detalle}</div></div>
+      <div><div class="nombre" style="font-size:20px;font-weight:800">${it.cant>1?it.cant+'× ':''}<span style="color:${col}">${esc(it.tipo)}</span></div>
+        <div style="font-size:16px;font-weight:700;margin-top:4px;color:${dCol}">${detalle}</div></div>
       <button class="btnDel" onclick="bQuitar(${i})">✕</button></div></div>`;}).join('');
 }
 function bHint(){
