@@ -295,10 +295,7 @@
     <label>Qué consume</label>
     <div class="chips" id="bTipos"></div>
 
-    <label>Barra / zona (opcional)</label>
-    <div class="chips" id="bZonas"></div>
-
-    <label>Precio</label>
+    <label>Precio / cambio</label>
     <div class="chips" id="bPrecios"></div>
 
     <label>Cantidad</label>
@@ -879,9 +876,8 @@ async function sincronizar(){
 /* ================= BARRA / BEBIDAS ================= */
 let consumos=[];
 const BEBIDAS=['COMBO SKYY SABOR','COMBO ABSOLUT SABOR','GREY GOOSE','CONSUMICIÓN','SPEED','CHANDON','PRAVDA','COMBO BRANCA'];
-const ZONAS_BARRA=['VIP','Principal','Terraza','Entre Piso','Zebra'];
 const PRECIOS_BEBIDA=[30000,35000,38000,40000,55000];
-let bTipo='', bZona='', bPrecio=null, bCantN=1, bChipsListos=false;
+let bTipo='', bPrecio=null, bCambio='', bCantN=1, bChipsListos=false;
 function colorTipo(t){
   const u=(t||'').toUpperCase();
   const fijos=[['SKYY','#38bdf8'],['ABSOLUT','#a78bfa'],['GREY GOOSE','#fbbf24'],['PRAVDA','#ec4899'],
@@ -896,24 +892,32 @@ function bInit(){
   document.getElementById('bTipos').innerHTML=BEBIDAS.map(t=>{const c=colorTipo(t);
     return `<button type="button" class="chip" data-tipo="${t}" style="border-color:${c};color:${c}" onclick="bPickTipo(this)">${t}</button>`;}).join('')
     +`<button type="button" class="chip" onclick="bOtroTipo()">Otro…</button>`;
-  document.getElementById('bZonas').innerHTML=ZONAS_BARRA.map(z=>`<button type="button" class="chip" data-zona="${z}" onclick="bPickZona(this)">${z}</button>`).join('');
   document.getElementById('bPrecios').innerHTML=PRECIOS_BEBIDA.map(p=>`<button type="button" class="chip pago" data-precio="${p}" onclick="bPickPrecio(this,${p})">$${p.toLocaleString('es-AR')}</button>`).join('')
     +`<button type="button" class="chip free" onclick="bPickPrecio(this,0)">Sin cargo</button>`
-    +`<button type="button" class="chip" onclick="bOtroPrecio()">Otro…</button>`;
+    +`<button type="button" class="chip" onclick="bOtroPrecio()">Otro…</button>`
+    +`<button type="button" class="chip" id="bChipCambio" style="border-color:var(--ext);color:var(--ext)" onclick="bUpgrade()">🔄 Upgrade / cambio</button>`;
   document.getElementById('bFirma').innerHTML=`Se carga a nombre de <b>${esc(yo.nombre)}</b>.`;
   document.getElementById('bNombre').oninput=()=>{ bResumen(); bHint(); };
 }
 function bPickTipo(el){ document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bTipo=el.dataset.tipo; bResumen(); }
 function bOtroTipo(){ const v=prompt('¿Qué consume?'); if(v&&v.trim()){ bTipo=v.trim().toUpperCase(); document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel')); bResumen(); aviso('Consumo: '+bTipo,'ok'); } }
-function bPickZona(el){ const on=el.classList.contains('sel'); document.querySelectorAll('#bZonas .chip').forEach(c=>c.classList.remove('sel')); if(!on){el.classList.add('sel'); bZona=el.dataset.zona;} else bZona=''; bResumen(); }
-function bPickPrecio(el,p){ document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bPrecio=p; bResumen(); }
-function bOtroPrecio(){ const v=prompt('Precio por unidad ($):'); if(v!==null){ bPrecio=Math.max(0,parseInt(String(v).replace(/\D/g,''))||0); document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); bResumen(); aviso('Precio: '+(bPrecio?money(bPrecio):'sin cargo'),'ok'); } }
+function bPickPrecio(el,p){ document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bPrecio=p; bCambio=''; bResumen(); }
+function bOtroPrecio(){ const v=prompt('Precio por unidad ($):'); if(v!==null){ bPrecio=Math.max(0,parseInt(String(v).replace(/\D/g,''))||0); bCambio=''; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); bResumen(); aviso('Precio: '+(bPrecio?money(bPrecio):'sin cargo'),'ok'); } }
+function bUpgrade(){
+  if(!bTipo)return alert('Primero elegí qué recibe (el trago nuevo).');
+  const v=prompt('¿Qué combo tenía? (se lo cambiás por '+bTipo+')');
+  if(v===null)return;
+  bCambio=v.trim().toUpperCase()||'—'; bPrecio=0;
+  document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('bChipCambio').classList.add('sel');
+  bResumen(); aviso('Upgrade autorizado','ok');
+}
 function bStep(d){ bCantN=Math.max(1,Math.min(30,bCantN+d)); document.getElementById('bCant').textContent=bCantN; bResumen(); }
 function bResumen(){
   const n=document.getElementById('bNombre').value.trim(); const p=[];
   if(bTipo)p.push((bCantN>1?bCantN+'× ':'')+bTipo);
-  if(bPrecio!=null)p.push(bPrecio?money(bPrecio)+(bCantN>1?' c/u':''):'sin cargo');
-  if(bZona)p.push(bZona);
+  if(bCambio)p.push('🔄 upgrade'+(bCambio&&bCambio!=='—'?' de '+bCambio:''));
+  else if(bPrecio!=null)p.push(bPrecio?money(bPrecio)+(bCantN>1?' c/u':''):'sin cargo');
   document.getElementById('bResumen').textContent=(n||'…')+(p.length?' → '+p.join(' · '):'');
 }
 function bHint(){
@@ -927,15 +931,15 @@ async function cargarBebida(){
   const n=document.getElementById('bNombre').value.trim();
   if(!n)return alert('Falta el nombre.');
   if(!bTipo)return alert('Elegí qué consume.');
-  if(bPrecio==null)return alert('Elegí el precio (o sin cargo).');
-  const filas=Array.from({length:bCantN},()=>({evento_id:evento.id,nombre:n,tipo:bTipo,zona:bZona,precio:bPrecio}));
+  if(bPrecio==null && !bCambio)return alert('Elegí el precio, sin cargo, o upgrade.');
+  const filas=Array.from({length:bCantN},()=>({evento_id:evento.id,nombre:n,tipo:bTipo,precio:bCambio?0:bPrecio,cambio:bCambio}));
   const cant=filas.length;
   const btn=document.getElementById('bGuardar'); btn.disabled=true; const txt=btn.textContent; btn.textContent='CARGANDO…';
   try{
     await api('/rest/v1/consumos',{method:'POST',body:JSON.stringify(filas)});
-    document.getElementById('bNombre').value=''; bTipo=''; bZona=''; bPrecio=null; bCantN=1;
+    document.getElementById('bNombre').value=''; bTipo=''; bPrecio=null; bCambio=''; bCantN=1;
     document.getElementById('bCant').textContent='1';
-    document.querySelectorAll('#bTipos .chip,#bZonas .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
+    document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
     document.getElementById('bDupAviso').innerHTML=''; bResumen();
     aviso(cant>1?`${cant} consumos ✓`:'Consumo cargado ✓','ok');
     await sincronizar(); document.getElementById('bNombre').focus();
@@ -950,8 +954,8 @@ function renderBarraCarga(){
         <div class="meta">${hora(c)} · cargó ${esc(c.autoriza)}${c.entregado?` · <b style="color:var(--ok)">entregado (${esc(c.entregado_por||'')})</b>`:''}</div></div>
         <button class="btnDel" onclick="borrarConsumo('${c.id}')">✕</button></div>
       <div class="badges"><span class="badge" style="border-color:${col};color:${col};background:${col}22">${esc(c.tipo)}</span>
-        ${c.zona?`<span class="badge b-grupo">${esc(c.zona)}</span>`:''}
-        <span class="badge ${c.precio?'b-pago':'b-free'}">${c.precio?money(c.precio):'SIN CARGO'}</span></div>
+        ${c.cambio?`<span class="badge b-ext">🔄 UPGRADE${c.cambio!=='—'?' de '+esc(c.cambio):''}</span>`
+          :`<span class="badge ${c.precio?'b-pago':'b-free'}">${c.precio?money(c.precio):'SIN CARGO'}</span>`}</div>
     </div>`;}).join('')||'<div class="cargando">Todavía no cargaste bebidas.</div>';
 }
 function borrarConsumo(id){
@@ -996,13 +1000,16 @@ function cerrarFoco(){ document.getElementById('foco').classList.add('hide'); fo
 function pintarFoco(){
   const its=consumos.filter(c=>!c.entregado && c.nombre===focoNom);
   document.getElementById('fNom').textContent=focoNom;
-  const g={}; its.forEach(c=>{const k=c.tipo+'|'+c.precio;(g[k]=g[k]||[]).push(c);});
+  const g={}; its.forEach(c=>{const k=c.tipo+'|'+c.precio+'|'+(c.cambio||'');(g[k]=g[k]||[]).push(c);});
   focoGrupos=Object.values(g);   // guardamos los grupos para bPick por índice (sin interpolar texto)
   document.getElementById('fBody').innerHTML=focoGrupos.map((grp,idx)=>{
-    const d=grp[0], q=grp.length, gratis=d.precio===0, eleg=grp.filter(x=>bSel.has(x.id)).length, c=colorTipo(d.tipo);
+    const d=grp[0], q=grp.length, eleg=grp.filter(x=>bSel.has(x.id)).length, c=colorTipo(d.tipo);
+    const val = d.cambio ? `<b style="color:var(--ext)">🔄 upgrade${d.cambio!=='—'?' (de '+esc(d.cambio)+')':''}</b>`
+              : d.precio===0 ? '<b style="color:var(--free)">sin cargo</b>'
+              : '<b>'+money(d.precio)+'</b>'+(q>1?' c/u':'');
     return `<div class="cont" style="border-left-color:${c}">
-      <div class="contInfo"><div class="contLbl" style="color:${c}">${esc(d.tipo)}${d.zona?' · '+esc(d.zona):''}</div>
-        <div class="contNum">${gratis?'<b style="color:var(--free)">sin cargo</b>':'<b>'+money(d.precio)+'</b>'+(q>1?' c/u':'')}</div></div>
+      <div class="contInfo"><div class="contLbl" style="color:${c}">${esc(d.tipo)}</div>
+        <div class="contNum">${val}</div></div>
       <button class="contBtn menos" ${eleg===0?'disabled':''} onclick="bPick(${idx},-1)">−</button>
       <div class="val" style="font-size:20px;font-weight:800;min-width:48px;text-align:center">${eleg}<small style="display:block;font-size:11px;color:var(--dim)">de ${q}</small></div>
       <button class="contBtn mas" ${eleg>=q?'disabled':''} onclick="bPick(${idx},1)">+</button>
