@@ -603,6 +603,45 @@ function renderReporte(rep,opts){
       <thead><tr><th>Socio</th><th>Cargó</th><th>Entró</th><th>Free</th><th>S/Rec</th><th>Paga</th><th>Recaudó</th></tr></thead>
       <tbody>${soc.map(s=>`<tr><td><b>${esc(s.socio)}</b></td><td>${s.personas}</td><td>${s.entraron}</td><td>${s.free}</td><td>${s.sinrec}</td><td>${s.pagan}</td><td class="dinero">${money(s.recaudado)}</td></tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--dim)">Sin datos</td></tr>'}</tbody></table></div>`;
 
+  // ===== BARRA / CONSUMOS =====
+  const B=rep.barra;
+  if(B && B.totales && B.totales.items>0){
+    const bt=B.totales;
+    h+=`<div class="repSec">🍸 Barra — consumos</div>
+      <div class="repTiles">
+        <div class="repTile"><b>${bt.items}</b><span>cargados</span></div>
+        <div class="repTile"><b style="color:var(--ok)">${bt.entregados}</b><span>entregados</span></div>
+        <div class="repTile"><b style="color:${bt.sin_retirar?'var(--pago)':'var(--dim)'}">${bt.sin_retirar}</b><span>sin retirar</span></div>
+        <div class="repTile"><b style="color:var(--free)">${bt.regalados}</b><span>sin cargo</span></div>
+        <div class="repTile"><b style="color:var(--ext)">${bt.upgrades}</b><span>upgrades</span></div>
+        <div class="repTile big"><b class="dinero" style="color:var(--pago)">${money(bt.facturado)}</b><span>facturado en barra</span></div>
+      </div>`;
+    h+=`<div class="repSec">Por artículo</div>
+      <div style="overflow-x:auto"><table class="repTable">
+        <thead><tr><th>Artículo</th><th>Cant</th><th>Entreg.</th><th>Sin cargo</th><th>Upgr.</th><th>Facturado</th></tr></thead>
+        <tbody>${(B.por_articulo||[]).map(x=>{const col=colorTipo(x.tipo);
+          return `<tr><td><span class="badge" style="border-color:${col};color:${col};background:${col}22">${esc(x.tipo)}</span></td><td>${x.cant}</td><td>${x.entregados}</td><td>${x.regalados}</td><td>${x.upgrades}</td><td class="dinero">${money(x.facturado)}</td></tr>`;}).join('')}</tbody></table></div>`;
+    const pb=B.por_barra||[];
+    if(pb.length)
+      h+=`<div class="repSec">Entregas por barra</div>
+        <div style="overflow-x:auto"><table class="repTable">
+          <thead><tr><th>Barra</th><th>Entregas</th><th>Valor</th></tr></thead>
+          <tbody>${pb.map(x=>`<tr><td><b>🍸 ${esc(x.barra)}</b></td><td>${x.entregas}</td><td class="dinero">${money(x.valor)}</td></tr>`).join('')}</tbody></table></div>`;
+    const qc=B.quien_cargo||[];
+    if(qc.length)
+      h+=`<div class="repSec">Quién cargó consumos${rep.atribucion_confiable?'':''}</div>
+        <div style="overflow-x:auto"><table class="repTable">
+          <thead><tr><th>Socio</th><th>Items</th><th>Sin cargo</th><th>Facturado</th></tr></thead>
+          <tbody>${qc.map(x=>`<tr><td><b>${esc(x.socio||'—')}</b></td><td>${x.items}</td><td>${x.regalados}</td><td class="dinero">${money(x.facturado)}</td></tr>`).join('')}</tbody></table></div>`;
+    const sr=B.sin_retirar||[];
+    h+=`<div class="repSec">Consumos sin retirar (${sr.length})</div>`;
+    h+= sr.length ? sr.map(x=>`<div class="repNo"><span>${esc(x.nombre)}</span><small>${esc(x.tipo)}${x.cambio?' · 🔄 upgrade de '+esc(x.cambio):(x.precio?' · '+money(x.precio):' · sin cargo')}</small></div>`).join('')
+                  : `<div class="repNo"><span style="color:var(--dim)">Se retiró todo 🎉</span></div>`;
+  }else{
+    h+=`<div class="repSec">🍸 Barra — consumos</div>
+      <div class="repNo"><span style="color:var(--dim)">No se cargaron consumos esta noche.</span></div>`;
+  }
+
   const ns=rep.no_shows||[];
   h+=`<div class="repSec">No vinieron (${ns.length} fichas)</div>`;
   h+= ns.length ? ns.map(n=>`<div class="repNo"><span>${esc(n.nombre)}</span><small>${noShowTxt(n)}</small></div>`).join('')
@@ -653,6 +692,15 @@ function reporteTexto(rep){
   L.push(''); L.push('POR SOCIO' + (rep.atribucion_confiable?'':' (referencial)'));
   (rep.por_socio||[]).forEach(s=>L.push(`• ${s.socio}: ${s.personas} cargados, ${s.entraron} entraron, ${s.free} free, ${money(s.recaudado)}`));
   if(r.mas_recaudado){ L.push(''); L.push(`🏆 Más invitados: ${r.mas_invitados?r.mas_invitados.socio:'—'} · 💰 Más recaudó: ${r.mas_recaudado.socio} (${money(r.mas_recaudado.valor)})`); }
+  const B=rep.barra;
+  if(B && B.totales && B.totales.items>0){
+    const bt=B.totales;
+    L.push('');
+    L.push(`🍸 BARRA: ${bt.items} consumos · ${bt.entregados} entregados · ${bt.sin_retirar} sin retirar`);
+    L.push(`💰 Facturado barra: ${money(bt.facturado)} · 🎁 Sin cargo: ${bt.regalados} · 🔄 Upgrades: ${bt.upgrades}`);
+    (B.por_articulo||[]).forEach(x=>L.push(`• ${x.tipo}: ${x.cant}${x.facturado?' ('+money(x.facturado)+')':' (sin cargo)'}`));
+    (B.por_barra||[]).forEach(x=>L.push(`🍸 ${x.barra}: ${x.entregas} entregas`));
+  }
   return L.join('\n');
 }
 function enviarWhatsapp(){
