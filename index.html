@@ -878,7 +878,13 @@ async function sincronizar(){
 let consumos=[];
 const BEBIDAS=['COMBO SKYY SABOR','COMBO ABSOLUT SABOR','GREY GOOSE','CONSUMICIÓN','SPEED','CHANDON','PRAVDA','COMBO BRANCA'];
 const PRECIOS_BEBIDA=[30000,35000,38000,40000,55000];
-let bTipo='', bPrecio=null, bCambio='', bCantN=1, bChipsListos=false, carrito=[];
+// Precio con descuento sugerido por trago: al elegir el trago aparece un chip ⭐ ya seleccionado.
+// (editar acá cuando cambie la carta)
+const PRECIOS_SUGERIDOS={
+  'COMBO SKYY SABOR':55000,
+  'GREY GOOSE':180000,
+};
+let bTipo='', bPrecio=null, bCambio='', bCantN=1, bChipsListos=false, carrito=[], bPrecioSug=false;
 function colorTipo(t){
   const u=(t||'').toUpperCase();
   const fijos=[['SKYY','#38bdf8'],['ABSOLUT','#a78bfa'],['GREY GOOSE','#fbbf24'],['PRAVDA','#ec4899'],
@@ -893,22 +899,38 @@ function bInit(){
   document.getElementById('bTipos').innerHTML=BEBIDAS.map(t=>{const c=colorTipo(t);
     return `<button type="button" class="chip" data-tipo="${t}" style="border-color:${c};color:${c}" onclick="bPickTipo(this)">${t}</button>`;}).join('')
     +`<button type="button" class="chip" onclick="bOtroTipo()">Otro…</button>`;
-  document.getElementById('bPrecios').innerHTML=PRECIOS_BEBIDA.map(p=>`<button type="button" class="chip pago" data-precio="${p}" onclick="bPickPrecio(this,${p})">$${p.toLocaleString('es-AR')}</button>`).join('')
+  document.getElementById('bPrecios').innerHTML=`<button type="button" class="chip" id="bChipSug" style="display:none;font-weight:800" onclick="bPickSug()"></button>`
+    +PRECIOS_BEBIDA.map(p=>`<button type="button" class="chip pago" data-precio="${p}" onclick="bPickPrecio(this,${p})">$${p.toLocaleString('es-AR')}</button>`).join('')
     +`<button type="button" class="chip free" onclick="bPickPrecio(this,0)">Sin cargo</button>`
     +`<button type="button" class="chip" onclick="bOtroPrecio()">Otro…</button>`
     +`<button type="button" class="chip" id="bChipCambio" style="border-color:var(--ext);color:var(--ext)" onclick="bUpgrade()">🔄 Upgrade / cambio</button>`;
   document.getElementById('bFirma').innerHTML=`Se carga a nombre de <b>${esc(yo.nombre)}</b>.`;
   document.getElementById('bNombre').oninput=()=>{ bResumen(); bHint(); };
 }
-function bPickTipo(el){ document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bTipo=el.dataset.tipo; bResumen(); }
-function bOtroTipo(){ const v=prompt('¿Qué consume?'); if(v&&v.trim()){ bTipo=v.trim().toUpperCase(); document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel')); bResumen(); aviso('Consumo: '+bTipo,'ok'); } }
-function bPickPrecio(el,p){ document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bPrecio=p; bCambio=''; bResumen(); }
-function bOtroPrecio(){ const v=prompt('Precio por unidad ($):'); if(v!==null){ bPrecio=Math.max(0,parseInt(String(v).replace(/\D/g,''))||0); bCambio=''; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); bResumen(); aviso('Precio: '+(bPrecio?money(bPrecio):'sin cargo'),'ok'); } }
+function bPickTipo(el){ document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bTipo=el.dataset.tipo; bSugerir(); bResumen(); }
+function bOtroTipo(){ const v=prompt('¿Qué consume?'); if(v&&v.trim()){ bTipo=v.trim().toUpperCase(); document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel')); bSugerir(); bResumen(); aviso('Consumo: '+bTipo,'ok'); } }
+// Al elegir un trago con precio sugerido, aparece el chip ⭐ ya seleccionado (se puede pisar tocando otro precio).
+function bSugerir(){
+  const chip=document.getElementById('bChipSug'); if(!chip)return;
+  const p=PRECIOS_SUGERIDOS[bTipo];
+  if(p!=null){
+    document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
+    const col=colorTipo(bTipo);
+    chip.style.display=''; chip.textContent='⭐ '+money(p); chip.style.borderColor=col; chip.style.color=col;
+    chip.classList.add('sel'); bPrecio=p; bCambio=''; bPrecioSug=true;
+  }else{
+    chip.style.display='none'; chip.classList.remove('sel');
+    if(bPrecioSug){ bPrecio=null; bPrecioSug=false; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); }
+  }
+}
+function bPickSug(){ const p=PRECIOS_SUGERIDOS[bTipo]; if(p==null)return; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); document.getElementById('bChipSug').classList.add('sel'); bPrecio=p; bCambio=''; bPrecioSug=true; bResumen(); }
+function bPickPrecio(el,p){ document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bPrecio=p; bCambio=''; bPrecioSug=false; bResumen(); }
+function bOtroPrecio(){ const v=prompt('Precio por unidad ($):'); if(v!==null){ bPrecio=Math.max(0,parseInt(String(v).replace(/\D/g,''))||0); bCambio=''; bPrecioSug=false; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); bResumen(); aviso('Precio: '+(bPrecio?money(bPrecio):'sin cargo'),'ok'); } }
 function bUpgrade(){
   if(!bTipo)return alert('Primero elegí qué recibe (el trago nuevo).');
   const v=prompt('¿Qué combo tenía? (se lo cambiás por '+bTipo+')');
   if(v===null)return;
-  bCambio=v.trim().toUpperCase()||'—'; bPrecio=0;
+  bCambio=v.trim().toUpperCase()||'—'; bPrecio=0; bPrecioSug=false;
   document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
   document.getElementById('bChipCambio').classList.add('sel');
   bResumen(); aviso('Upgrade autorizado','ok');
@@ -927,8 +949,9 @@ function bAgregar(){
   if(!bTipo)return alert('Elegí qué consume.');
   if(bPrecio==null && !bCambio)return alert('Elegí el precio, sin cargo, o upgrade.');
   carrito.push({tipo:bTipo, precio:bCambio?0:bPrecio, cambio:bCambio, cant:bCantN});
-  bTipo=''; bPrecio=null; bCambio=''; bCantN=1; document.getElementById('bCant').textContent='1';
+  bTipo=''; bPrecio=null; bCambio=''; bCantN=1; bPrecioSug=false; document.getElementById('bCant').textContent='1';
   document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
+  const cs=document.getElementById('bChipSug'); if(cs)cs.style.display='none';
   renderCarrito(); bResumen();
 }
 function bQuitar(i){ carrito.splice(i,1); renderCarrito(); }
@@ -963,9 +986,10 @@ async function cargarBebida(){
   const btn=document.getElementById('bGuardar'); btn.disabled=true; const txt=btn.textContent; btn.textContent='CARGANDO…';
   try{
     await api('/rest/v1/consumos',{method:'POST',body:JSON.stringify(filas)});
-    document.getElementById('bNombre').value=''; carrito=[]; bTipo=''; bPrecio=null; bCambio=''; bCantN=1;
+    document.getElementById('bNombre').value=''; carrito=[]; bTipo=''; bPrecio=null; bCambio=''; bCantN=1; bPrecioSug=false;
     document.getElementById('bCant').textContent='1';
     document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
+    const cs=document.getElementById('bChipSug'); if(cs)cs.style.display='none';
     document.getElementById('bDupAviso').innerHTML=''; renderCarrito(); bResumen();
     aviso(cant>1?`${cant} consumos cargados ✓`:'Consumo cargado ✓','ok');
     await sincronizar(); document.getElementById('bNombre').focus();
