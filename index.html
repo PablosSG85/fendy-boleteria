@@ -297,6 +297,10 @@
 
     <label>Agregar un consumo</label>
     <div class="chips" id="bTipos"></div>
+    <div id="bOtroPanel" style="display:none;margin-top:10px">
+      <input type="text" id="bOtroBuscar" placeholder="Buscá el artículo… (escribí para filtrar)" autocomplete="off" oninput="bOtroFiltrar()">
+      <div class="chips" id="bOtroLista" style="margin-top:8px"></div>
+    </div>
     <label style="margin-top:12px">Precio / cambio</label>
     <div class="chips" id="bPrecios"></div>
     <label style="margin-top:12px">Cantidad</label>
@@ -876,18 +880,35 @@ async function sincronizar(){
 }
 /* ================= BARRA / BEBIDAS ================= */
 let consumos=[];
-const BEBIDAS=['COMBO SKYY SABOR','COMBO ABSOLUT SABOR','GREY GOOSE','CONSUMICIÓN','SPEED','CHANDON','PRAVDA','COMBO BRANCA'];
+const BEBIDAS=['COMBO SKYY SABOR','COMBO ABSOLUT SABOR','GREY GOOSE','CIROC','CONSUMICIÓN','SPEED','CHANDON','PRAVDA','COMBO BRANCA'];
+// Articulos que aparecen en el buscador de "Otro…" ademas de lo ya cargado en el evento.
+// (editar aca cuando cambie la carta)
+const BEBIDAS_OTRAS=['COMBO HODLMOSSER','GIN BRIGHTON','SANTA JULIA CHENIN','CAFAYATE','AGUA','CHAMPAGNE','MOET','VEUVE'];
 const PRECIOS_BEBIDA=[30000,35000,38000,40000,55000];
 // Precio con descuento sugerido por trago: al elegir el trago aparece un chip ⭐ ya seleccionado.
+// Sacado del sheet "CONSUMOS FENDY" de Chino (última noche 18/07 + últimas vistas). 0 = sin cargo.
 // (editar acá cuando cambie la carta)
 const PRECIOS_SUGERIDOS={
-  'COMBO SKYY SABOR':55000,
-  'GREY GOOSE':180000,
+  'COMBO SKYY SABOR':55000,     // 18/07: $55.000 (31 veces)
+  'COMBO ABSOLUT SABOR':80000,  // 18/07: $80.000
+  'GREY GOOSE':180000,          // últimas noches: $180.000
+  'CIROC':180000,               // 18/07: $180.000
+  'PRAVDA':160000,              // últimas vistas: $150–160.000
+  'CHANDON':40000,              // últimas vistas: $35–40.000
+  'COMBO BRANCA':70000,         // 18/07: $70.000
+  'COMBO HODLMOSSER':55000,     // última vista: $55.000
+  'GIN BRIGHTON':35000,         // última vista: $35.000
+  'CAFAYATE':20000,             // 18/07: $20.000
+  'SANTA JULIA CHENIN':0,       // siempre sin cargo
+  'AGUA':0,                     // siempre sin cargo
+  'CONSUMICIÓN':0,              // siempre sin cargo
+  'SPEED':0,                    // siempre sin cargo
 };
 let bTipo='', bPrecio=null, bCambio='', bCantN=1, bChipsListos=false, carrito=[], bPrecioSug=false;
+let bUpgradeModo=false;   // true = ya toco 🔄 y falta elegir el trago NUEVO
 function colorTipo(t){
   const u=(t||'').toUpperCase();
-  const fijos=[['SKYY','#38bdf8'],['ABSOLUT','#a78bfa'],['GREY GOOSE','#fbbf24'],['PRAVDA','#ec4899'],
+  const fijos=[['SKYY','#38bdf8'],['ABSOLUT','#a78bfa'],['GREY GOOSE','#fbbf24'],['CIROC','#818cf8'],['PRAVDA','#ec4899'],
     ['CONSUMIC','#2dd4bf'],['SPEED','#fb923c'],['CHANDON','#f9a8d4'],['BRANCA','#f87171'],
     ['HODLMOS','#a3e635'],['GIN','#34d399'],['CHAMPAGNE','#fcd34d'],['MOET','#fcd34d'],['VEUVE','#fcd34d']];
   for(const [k,c] of fijos) if(u.includes(k)) return c;
@@ -907,8 +928,47 @@ function bInit(){
   document.getElementById('bFirma').innerHTML=`Se carga a nombre de <b>${esc(yo.nombre)}</b>.`;
   document.getElementById('bNombre').oninput=()=>{ bResumen(); bHint(); };
 }
-function bPickTipo(el){ document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bTipo=el.dataset.tipo; bSugerir(); bResumen(); }
-function bOtroTipo(){ const v=prompt('¿Qué consume?'); if(v&&v.trim()){ bTipo=v.trim().toUpperCase(); document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel')); bSugerir(); bResumen(); aviso('Consumo: '+bTipo,'ok'); } }
+function bSetTipo(t, el){
+  document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel'));
+  if(el)el.classList.add('sel');
+  bTipo=t;
+  bOtroCerrar();
+  if(bUpgradeModo){
+    // segundo toque del upgrade: este es el trago NUEVO; el viejo quedo en bCambio
+    bUpgradeModo=false; bPrecio=0; bPrecioSug=false;
+    aviso('Upgrade: '+bCambio+' → '+bTipo,'ok');
+  }else{
+    bSugerir();
+  }
+  bResumen();
+}
+function bPickTipo(el){ bSetTipo(el.dataset.tipo, el); }
+
+/* ---- "Otro…": buscador con filtro sobre los demas articulos (sin ventanas) ---- */
+function bCatalogoOtros(){
+  const enGrid=new Set(BEBIDAS);
+  const set=new Set(BEBIDAS_OTRAS);
+  for(const c of consumos) if(c.tipo) set.add(String(c.tipo).toUpperCase());
+  return [...set].filter(t=>!enGrid.has(t)).sort();
+}
+function bOtroTipo(){
+  const p=document.getElementById('bOtroPanel');
+  if(p.style.display!=='none'){ bOtroCerrar(); return; }
+  p.style.display='';
+  const inp=document.getElementById('bOtroBuscar');
+  inp.value=''; bOtroFiltrar(); inp.focus();
+}
+function bOtroCerrar(){ const p=document.getElementById('bOtroPanel'); if(p)p.style.display='none'; }
+function bOtroFiltrar(){
+  const q=(document.getElementById('bOtroBuscar').value||'').trim().toUpperCase();
+  const lista=bCatalogoOtros().filter(t=>!q||t.includes(q));
+  let html=lista.map(t=>{const c=colorTipo(t);
+    return `<button type="button" class="chip" style="border-color:${c};color:${c}" onclick="bSetTipo('${esc(t).replace(/'/g,"\\'")}')">${esc(t)}</button>`;}).join('');
+  // si lo tipeado no coincide exacto con nada, ofrecer cargarlo tal cual (ultima opcion)
+  if(q && !lista.includes(q))
+    html+=`<button type="button" class="chip" onclick="bSetTipo('${esc(q).replace(/'/g,"\\'")}')">➕ Cargar “${esc(q)}”</button>`;
+  document.getElementById('bOtroLista').innerHTML=html||'<span style="color:var(--dim);font-size:13px">Escribí para buscar…</span>';
+}
 // Al elegir un trago con precio sugerido, aparece el chip ⭐ ya seleccionado (se puede pisar tocando otro precio).
 function bSugerir(){
   const chip=document.getElementById('bChipSug'); if(!chip)return;
@@ -916,28 +976,35 @@ function bSugerir(){
   if(p!=null){
     document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
     const col=colorTipo(bTipo);
-    chip.style.display=''; chip.textContent='⭐ '+money(p); chip.style.borderColor=col; chip.style.color=col;
+    chip.style.display=''; chip.textContent='⭐ '+(p===0?'Sin cargo':money(p)); chip.style.borderColor=(p===0?'var(--free)':col); chip.style.color=(p===0?'var(--free)':col);
     chip.classList.add('sel'); bPrecio=p; bCambio=''; bPrecioSug=true;
   }else{
     chip.style.display='none'; chip.classList.remove('sel');
     if(bPrecioSug){ bPrecio=null; bPrecioSug=false; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); }
   }
 }
-function bPickSug(){ const p=PRECIOS_SUGERIDOS[bTipo]; if(p==null)return; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); document.getElementById('bChipSug').classList.add('sel'); bPrecio=p; bCambio=''; bPrecioSug=true; bResumen(); }
-function bPickPrecio(el,p){ document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bPrecio=p; bCambio=''; bPrecioSug=false; bResumen(); }
-function bOtroPrecio(){ const v=prompt('Precio por unidad ($):'); if(v!==null){ bPrecio=Math.max(0,parseInt(String(v).replace(/\D/g,''))||0); bCambio=''; bPrecioSug=false; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); bResumen(); aviso('Precio: '+(bPrecio?money(bPrecio):'sin cargo'),'ok'); } }
+function bPickSug(){ const p=PRECIOS_SUGERIDOS[bTipo]; if(p==null)return; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); document.getElementById('bChipSug').classList.add('sel'); bPrecio=p; bCambio=''; bUpgradeModo=false; bPrecioSug=true; bResumen(); }
+function bPickPrecio(el,p){ document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bPrecio=p; bCambio=''; bUpgradeModo=false; bPrecioSug=false; bResumen(); }
+function bOtroPrecio(){ const v=prompt('Precio por unidad ($):'); if(v!==null){ bPrecio=Math.max(0,parseInt(String(v).replace(/\D/g,''))||0); bCambio=''; bUpgradeModo=false; bPrecioSug=false; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); bResumen(); aviso('Precio: '+(bPrecio?money(bPrecio):'sin cargo'),'ok'); } }
 function bUpgrade(){
-  if(!bTipo)return alert('Primero elegí qué recibe (el trago nuevo).');
-  const v=prompt('¿Qué combo tenía? (se lo cambiás por '+bTipo+')');
-  if(v===null)return;
-  bCambio=v.trim().toUpperCase()||'—'; bPrecio=0; bPrecioSug=false;
-  document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
-  document.getElementById('bChipCambio').classList.add('sel');
-  bResumen(); aviso('Upgrade autorizado','ok');
+  // Flujo en 3 toques, sin ventanas: [combo que TENIA] -> 🔄 -> [trago NUEVO]
+  const chip=document.getElementById('bChipCambio');
+  if(bUpgradeModo||bCambio){                       // segundo toque en 🔄 = cancelar
+    bUpgradeModo=false; bCambio=''; chip.classList.remove('sel');
+    if(bTipo)bSugerir();
+    bResumen(); aviso('Upgrade cancelado','ok'); return;
+  }
+  if(!bTipo){ aviso('Upgrade: tocá el combo que TENÍA, después 🔄, después el trago nuevo'); return; }
+  bUpgradeModo=true; bCambio=bTipo; bTipo=''; bPrecio=0; bPrecioSug=false;
+  document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
+  const cs=document.getElementById('bChipSug'); if(cs){cs.style.display='none';cs.classList.remove('sel');}
+  chip.classList.add('sel');
+  bResumen();
 }
 function bStep(d){ bCantN=Math.max(1,Math.min(30,bCantN+d)); document.getElementById('bCant').textContent=bCantN; bResumen(); }
 function bResumen(){
   const el=document.getElementById('bResumen'); if(!el)return;
+  if(bUpgradeModo){ el.innerHTML=`<span style="color:var(--ext)">🔄 Cambia su ${esc(bCambio)}</span><br><span style="color:var(--dim);font-weight:600;font-size:14px">Tocá el trago NUEVO 👆</span>`; return; }
   if(!bTipo){ el.innerHTML='<span style="color:var(--dim);font-weight:600;font-size:15px">Elegí el trago…</span>'; return; }
   const col=colorTipo(bTipo);
   let det='';
@@ -946,10 +1013,12 @@ function bResumen(){
   el.innerHTML=`<span style="color:${col}">${bCantN>1?bCantN+'× ':''}${esc(bTipo)}</span>${det?'<br>'+det:''}`;
 }
 function bAgregar(){
+  if(bUpgradeModo)return alert('Falta el trago NUEVO del upgrade: tocalo arriba.');
   if(!bTipo)return alert('Elegí qué consume.');
   if(bPrecio==null && !bCambio)return alert('Elegí el precio, sin cargo, o upgrade.');
   carrito.push({tipo:bTipo, precio:bCambio?0:bPrecio, cambio:bCambio, cant:bCantN});
-  bTipo=''; bPrecio=null; bCambio=''; bCantN=1; bPrecioSug=false; document.getElementById('bCant').textContent='1';
+  bTipo=''; bPrecio=null; bCambio=''; bCantN=1; bPrecioSug=false; bUpgradeModo=false; bOtroCerrar();
+  document.getElementById('bCant').textContent='1';
   document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
   const cs=document.getElementById('bChipSug'); if(cs)cs.style.display='none';
   renderCarrito(); bResumen();
