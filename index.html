@@ -264,6 +264,31 @@
   .pCard:active{border-color:var(--oro);}
   .nota{background:#241E2E;}
   .estado.ok span{text-shadow:none;}
+
+  /* ===== REFINADO DELICADO: colores empolvados, mismo orden, bajo contraste ===== */
+  :root{
+    --free:#96C7A2; --freebg:#182019;
+    --sinrec:#8FB4CF; --sinrecbg:#171D23;
+    --ext:#B0A2D6;  --extbg:#1D1926;
+    --pago:#D8BC7F; --pagobg:#221D12;
+    --ok:#96C7A2;   --accent:#B3546A;
+  }
+  .chip.free.sel,.chip.sinrec.sel,.chip.ext.sel,.chip.pago.sel{
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.06), inset 0 -2px 4px rgba(0,0,0,.35);}
+  .badge{font-weight:650;}
+  .btnIn{background:linear-gradient(180deg,#5B9C71,#417A56); color:#0e1f15;
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.28), inset 0 -2px 5px rgba(0,50,20,.35), 0 4px 12px rgba(0,0,0,.3);
+    text-shadow:0 1px 1px rgba(225,240,228,.35);}
+  .contBtn.mas{background:linear-gradient(180deg,#5B9C71,#417A56); color:#0e1f15;
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.28), inset 0 -2px 4px rgba(0,50,20,.35);
+    text-shadow:0 1px 1px rgba(225,240,228,.35);}
+  .estado.err span{background:#241318; border-color:#B3546A; color:#D9A3AF;}
+  .loginErr{background:#241318; border-color:#B3546A; color:#D9A3AF;}
+  .dup{background:#221E14; border-color:rgba(216,188,127,.45);}
+  .dupIt{border-top-color:#332B1A;}
+  .dupIt small{color:#B8A67E;}
+  .aviso{color:#C3D4E2;}
+  .aviso b{color:#E9EFF4;}
 </style>
 </head>
 <body>
@@ -1052,11 +1077,11 @@ let bTipo='', bPrecio=null, bCambio='', bCantN=1, bChipsListos=false, carrito=[]
 let bUpgradeModo=false;   // true = ya toco 🔄 y falta elegir el trago NUEVO
 function colorTipo(t){
   const u=(t||'').toUpperCase();
-  const fijos=[['SKYY','#38bdf8'],['ABSOLUT','#a78bfa'],['GREY GOOSE','#fbbf24'],['CIROC','#818cf8'],['PRAVDA','#ec4899'],
-    ['CONSUMIC','#2dd4bf'],['SPEED','#fb923c'],['CHANDON','#f9a8d4'],['BRANCA','#f87171'],
-    ['HODLMOS','#a3e635'],['GIN','#34d399'],['CHAMPAGNE','#fcd34d'],['MOET','#fcd34d'],['VEUVE','#fcd34d']];
+  const fijos=[['SKYY','#7FA8C4'],['ABSOLUT','#A093C4'],['GREY GOOSE','#C4A96B'],['CIROC','#8B93C4'],['PRAVDA','#C487A3'],
+    ['CONSUMIC','#7FB8AE'],['SPEED','#C49A78'],['CHANDON','#C4A3B8'],['BRANCA','#C48A8A'],
+    ['HODLMOS','#A8C487'],['GIN','#86BFA3'],['CHAMPAGNE','#C9B77F'],['MOET','#C9B77F'],['VEUVE','#C9B77F']];
   for(const [k,c] of fijos) if(u.includes(k)) return c;
-  const pal=['#f472b6','#60a5fa','#c084fc','#4ade80','#facc15','#fb7185','#22d3ee','#e879f9','#93c5fd'];
+  const pal=['#C490A8','#8FA8C4','#AC96C4','#93BF9C','#C4B478','#C48D95','#84B4BF','#BC93C4','#9FB4CF'];
   let h=0; for(let i=0;i<u.length;i++)h=(h*31+u.charCodeAt(i))>>>0; return pal[h%pal.length];
 }
 function bInit(){
