@@ -390,7 +390,6 @@
     <label>Condición</label>
     <div class="chips" id="fTipos">
       <button type="button" class="chip free" data-t="free">FREE</button>
-      <button type="button" class="chip sinrec" data-t="sinrec">SIN RECARGO</button>
       <button type="button" class="chip ext" data-t="ext">EXTENDER QR</button>
       <button type="button" class="chip pago" data-t="pago">PAGAN</button>
     </div>
@@ -727,7 +726,7 @@ function renderReporte(rep,opts){
       <thead><tr><th>Condición</th><th>Anotados</th><th>Entraron</th></tr></thead>
       <tbody>
         ${condRow('FREE','b-free',c.free)}
-        ${condRow('SIN RECARGO','b-sinrec',c.sinrec)}
+        ${c.sinrec.anotados>0?condRow('SIN RECARGO','b-sinrec',c.sinrec):''}
         ${condRow('EXTENDER QR','b-ext',c.ext)}
         ${condRow('PAGAN','b-pago',c.pago)}
       </tbody></table></div>`;
@@ -836,7 +835,7 @@ function reporteTexto(rep){
   L.push(`🚫 No vinieron: ${t.no_vinieron}`);
   L.push(`💰 Recaudado en puerta: ${money(t.recaudado)}`);
   L.push('');
-  L.push(`FREE: ${c.free.entraron}/${c.free.anotados} · SIN REC: ${c.sinrec.entraron}/${c.sinrec.anotados} · EXT: ${c.ext.entraron}/${c.ext.anotados} · PAGAN: ${c.pago.entraron}/${c.pago.anotados}`);
+  L.push(`FREE: ${c.free.entraron}/${c.free.anotados}${c.sinrec.anotados>0?` · SIN REC: ${c.sinrec.entraron}/${c.sinrec.anotados}`:''} · EXT: ${c.ext.entraron}/${c.ext.anotados} · PAGAN: ${c.pago.entraron}/${c.pago.anotados}`);
   if(!rep.atribucion_confiable){ L.push(''); L.push('⚠️ Datos por socio de esta noche no confiables (bug corregido).'); }
   L.push(''); L.push('POR SOCIO' + (rep.atribucion_confiable?'':' (referencial)'));
   (rep.por_socio||[]).forEach(s=>L.push(`• ${s.socio}: ${s.personas} cargados, ${s.entraron} entraron, ${s.free} free, ${money(s.recaudado)}`));
