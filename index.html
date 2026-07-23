@@ -327,6 +327,16 @@
   </form>
 </div>
 
+<div id="bOtroModal" class="modalBg hide" onclick="if(event.target===this)bOtroCerrar()">
+  <div class="modalBox">
+    <div class="modalTit">¿Qué consume?</div>
+    <div class="modalSub">Tocá el artículo, o escribí para filtrar</div>
+    <input type="text" id="bOtroBuscar" placeholder="Buscar artículo…" autocomplete="off" oninput="bOtroFiltrar()">
+    <div class="chips" id="bOtroLista" style="margin-top:14px"></div>
+    <div class="modalBtns"><button class="mBtn gho" onclick="bOtroCerrar()">Cancelar</button></div>
+  </div>
+</div>
+
 <div id="modal" class="modalBg hide">
   <div class="modalBox">
     <div class="modalTit" id="modalTit"></div>
@@ -438,10 +448,6 @@
 
     <label>Agregar un consumo</label>
     <div class="chips" id="bTipos"></div>
-    <div id="bOtroPanel" style="display:none;margin-top:10px">
-      <input type="text" id="bOtroBuscar" placeholder="Buscá el artículo… (escribí para filtrar)" autocomplete="off" oninput="bOtroFiltrar()">
-      <div class="chips" id="bOtroLista" style="margin-top:8px"></div>
-    </div>
     <div id="bPrecioSec" style="display:none">
       <label style="margin-top:12px">Precio</label>
       <div class="chips" id="bPrecios"></div>
@@ -1142,13 +1148,13 @@ function bCatalogoOtros(){
   return [...set].filter(t=>!enGrid.has(t)).sort();
 }
 function bOtroTipo(){
-  const p=document.getElementById('bOtroPanel');
-  if(p.style.display!=='none'){ bOtroCerrar(); return; }
-  p.style.display='';
+  const m=document.getElementById('bOtroModal');
+  m.classList.remove('hide');
   const inp=document.getElementById('bOtroBuscar');
-  inp.value=''; bOtroFiltrar(); inp.focus();
+  inp.value=''; bOtroFiltrar();
+  setTimeout(()=>inp.focus(),80);
 }
-function bOtroCerrar(){ const p=document.getElementById('bOtroPanel'); if(p)p.style.display='none'; }
+function bOtroCerrar(){ const m=document.getElementById('bOtroModal'); if(m)m.classList.add('hide'); }
 function bOtroFiltrar(){
   const q=(document.getElementById('bOtroBuscar').value||'').trim().toUpperCase();
   const lista=bCatalogoOtros().filter(t=>!q||t.includes(q));
