@@ -442,8 +442,10 @@
       <input type="text" id="bOtroBuscar" placeholder="Buscá el artículo… (escribí para filtrar)" autocomplete="off" oninput="bOtroFiltrar()">
       <div class="chips" id="bOtroLista" style="margin-top:8px"></div>
     </div>
-    <label style="margin-top:12px">Precio / cambio</label>
-    <div class="chips" id="bPrecios"></div>
+    <div id="bPrecioSec" style="display:none">
+      <label style="margin-top:12px">Precio</label>
+      <div class="chips" id="bPrecios"></div>
+    </div>
     <label style="margin-top:12px">Cantidad</label>
     <div class="stepRow">
       <button class="stepBtn" onclick="bStep(-1)">−</button>
@@ -1075,23 +1077,22 @@ const BEBIDAS=['COMBO SKYY SABOR','COMBO ABSOLUT SABOR','GREY GOOSE','CIROC','CO
 const BEBIDAS_OTRAS=['COMBO HODLMOSSER','GIN BRIGHTON','SANTA JULIA CHENIN','CAFAYATE','AGUA','CHAMPAGNE','MOET','VEUVE'];
 const PRECIOS_BEBIDA=[30000,35000,38000,40000,55000];
 // Precio con descuento sugerido por trago: al elegir el trago aparece un chip ⭐ ya seleccionado.
-// Sacado del sheet "CONSUMOS FENDY" de Chino (última noche 18/07 + últimas vistas). 0 = sin cargo.
+// Del sheet "CONSUMOS FENDY": SOLO los últimos 2 fines de semana (o el último conocido). 0 = sin cargo.
 // (editar acá cuando cambie la carta)
 const PRECIOS_SUGERIDOS={
-  'COMBO SKYY SABOR':55000,     // 18/07: $55.000 (31 veces)
-  'COMBO ABSOLUT SABOR':80000,  // 18/07: $80.000
-  'GREY GOOSE':180000,          // últimas noches: $180.000
-  'CIROC':180000,               // 18/07: $180.000
-  'PRAVDA':160000,              // últimas vistas: $150–160.000
-  'CHANDON':40000,              // últimas vistas: $35–40.000
-  'COMBO BRANCA':70000,         // 18/07: $70.000
-  'COMBO HODLMOSSER':55000,     // última vista: $55.000
-  'GIN BRIGHTON':35000,         // última vista: $35.000
-  'CAFAYATE':20000,             // 18/07: $20.000
-  'SANTA JULIA CHENIN':0,       // siempre sin cargo
-  'AGUA':0,                     // siempre sin cargo
+  'COMBO SKYY SABOR':55000,     // 18/07
+  'COMBO ABSOLUT SABOR':80000,  // 18/07
+  'CIROC':180000,               // 18/07
+  'COMBO BRANCA':70000,         // 18/07
+  'CAFAYATE':20000,             // 18/07
+  'PRAVDA':150000,              // 11/07 (ultimo con datos)
+  'GREY GOOSE':180000,          // ultimo conocido (04/07)
+  'CHANDON':40000,              // ultimo conocido
+  'COMBO HODLMOSSER':55000,     // ultimo conocido
   'CONSUMICIÓN':0,              // siempre sin cargo
   'SPEED':0,                    // siempre sin cargo
+  'AGUA':0, 'SANTA JULIA CHENIN':0,
+  'GIN BRIGHTON':35000,
 };
 let bTipo='', bPrecio=null, bCambio='', bCantN=1, bChipsListos=false, carrito=[], bPrecioSug=false;
 let bUpgradeModo=false;   // true = ya toco 🔄 y falta elegir el trago NUEVO
@@ -1110,7 +1111,6 @@ function bInit(){
     return `<button type="button" class="chip" data-tipo="${t}" style="border-color:${c};color:${c}" onclick="bPickTipo(this)">${t}</button>`;}).join('')
     +`<button type="button" class="chip" onclick="bOtroTipo()">Otro…</button>`;
   document.getElementById('bPrecios').innerHTML=`<button type="button" class="chip" id="bChipSug" style="display:none;font-weight:800" onclick="bPickSug()"></button>`
-    +PRECIOS_BEBIDA.map(p=>`<button type="button" class="chip pago" data-precio="${p}" onclick="bPickPrecio(this,${p})">$${p.toLocaleString('es-AR')}</button>`).join('')
     +`<button type="button" class="chip free" onclick="bPickPrecio(this,0)">Sin cargo</button>`
     +`<button type="button" class="chip" onclick="bOtroPrecio()">Otro…</button>`
     +`<button type="button" class="chip" id="bChipCambio" style="border-color:var(--ext);color:var(--ext)" onclick="bUpgrade()"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> Upgrade / cambio</button>`;
@@ -1129,6 +1129,7 @@ function bSetTipo(t, el){
   }else{
     bSugerir();
   }
+  actualizarPrecioSec();
   bResumen();
 }
 function bPickTipo(el){ bSetTipo(el.dataset.tipo, el); }
@@ -1172,6 +1173,15 @@ function bSugerir(){
     if(bPrecioSug){ bPrecio=null; bPrecioSug=false; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); }
   }
 }
+
+// La seccion de precio aparece recien al elegir el producto; upgrade solo para combos.
+function puedeUpgrade(t){ return /^COMBO/i.test(t||''); }
+function actualizarPrecioSec(){
+  const sec=document.getElementById('bPrecioSec'); if(!sec)return;
+  sec.style.display=(bTipo||bUpgradeModo||bCambio)?'':'none';
+  const ch=document.getElementById('bChipCambio');
+  if(ch) ch.style.display=(bUpgradeModo||bCambio||puedeUpgrade(bTipo))?'':'none';
+}
 function bPickSug(){ const p=PRECIOS_SUGERIDOS[bTipo]; if(p==null)return; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); document.getElementById('bChipSug').classList.add('sel'); bPrecio=p; bCambio=''; bUpgradeModo=false; bPrecioSug=true; bResumen(); }
 function bPickPrecio(el,p){ document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bPrecio=p; bCambio=''; bUpgradeModo=false; bPrecioSug=false; bResumen(); }
 function bOtroPrecio(){ const v=prompt('Precio por unidad ($):'); if(v!==null){ bPrecio=Math.max(0,parseInt(String(v).replace(/\D/g,''))||0); bCambio=''; bUpgradeModo=false; bPrecioSug=false; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); bResumen(); aviso('Precio: '+(bPrecio?money(bPrecio):'sin cargo'),'ok'); } }
@@ -1181,13 +1191,14 @@ function bUpgrade(){
   if(bUpgradeModo||bCambio){                       // segundo toque en 🔄 = cancelar
     bUpgradeModo=false; bCambio=''; chip.classList.remove('sel');
     if(bTipo)bSugerir();
-    bResumen(); aviso('Upgrade cancelado','ok'); return;
+    actualizarPrecioSec(); bResumen(); aviso('Upgrade cancelado','ok'); return;
   }
   if(!bTipo){ aviso('Upgrade: tocá el combo que TENÍA, después las flechas, después el trago nuevo'); return; }
   bUpgradeModo=true; bCambio=bTipo; bTipo=''; bPrecio=0; bPrecioSug=false;
   document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
   const cs=document.getElementById('bChipSug'); if(cs){cs.style.display='none';cs.classList.remove('sel');}
   chip.classList.add('sel');
+  actualizarPrecioSec();
   bResumen();
 }
 function bStep(d){ bCantN=Math.max(1,Math.min(30,bCantN+d)); document.getElementById('bCant').textContent=bCantN; bResumen(); }
@@ -1210,6 +1221,7 @@ function bAgregar(){
   document.getElementById('bCant').textContent='1';
   document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
   const cs=document.getElementById('bChipSug'); if(cs)cs.style.display='none';
+  actualizarPrecioSec();
   renderCarrito(); bResumen();
 }
 function bQuitar(i){ carrito.splice(i,1); renderCarrito(); }
@@ -1248,6 +1260,7 @@ async function cargarBebida(){
     document.getElementById('bCant').textContent='1';
     document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
     const cs=document.getElementById('bChipSug'); if(cs)cs.style.display='none';
+    actualizarPrecioSec();
     document.getElementById('bDupAviso').innerHTML=''; renderCarrito(); bResumen();
     aviso(cant>1?`${cant} consumos cargados ✓`:'Consumo cargado ✓','ok');
     await sincronizar(); document.getElementById('bNombre').focus();
@@ -1408,11 +1421,8 @@ document.getElementById('fNombres').addEventListener('input', sugerirBole);
 /* ---------- predictivo fantasma: espacio acepta palabra por palabra ---------- */
 function nrmc(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
 function poolNombres(){
-  const s=new Set(), out=[];
-  const add=n=>{ const k=nrmc(n); if(n&&!s.has(k)){ s.add(k); out.push(n); } };
-  items.forEach(i=>add(i.nombre)); consumos.forEach(c=>add(c.nombre));
-  CLIENTES.forEach(add);
-  return out;
+  // SOLO el padron de clientes verificados (pedido de Pablo: nada de lo tipeado en la noche)
+  return CLIENTES;
 }
 function candidatoPara(typed){
   const q=nrmc(typed); if(q.length<1) return null;
@@ -1457,13 +1467,29 @@ function crearPredictivo(el, esTA){
     pintar();
     if(el.id==='bNombre'){ try{ bResumen(); bHint(); }catch(_){}}
   }
+  let prevLinea='', ultAceptado=0;
+  const _pintar=pintar;
+  pintar=function(){ _pintar(); prevLinea=lineaActual().linea; };
   el.addEventListener('input', e=>{
-    if(e.inputType==='insertText' && e.data===' ' && cand){
-      // deshacer el espacio recien tipeado y aceptar la prediccion
+    const cur=lineaActual().linea;
+    // aparecio un espacio al final respecto de lo anterior => acepto la prediccion
+    // (comparo el texto, no la tecla: los teclados del celu mandan el espacio de mil formas)
+    if(cand && cur===prevLinea+' '){
       const pos=el.selectionStart;
       el.value=el.value.slice(0,pos-1)+el.value.slice(pos);
       el.setSelectionRange(pos-1,pos-1);
+      ultAceptado=Date.now();
       aceptar();
+      return;
+    }
+    // el teclado convirtio el doble espacio en punto ("Fede ." / "Fede. "): lo anulo
+    if(Date.now()-ultAceptado<3000 &&
+       (cur===prevLinea.replace(/ $/,'')+'. ' || cur===prevLinea+'. ' || cur===prevLinea+'.')){
+      const {antes, despues}=lineaActual();
+      el.value=antes+prevLinea+despues;
+      const pos=(antes+prevLinea).length;
+      el.setSelectionRange(pos,pos);
+      pintar();
       return;
     }
     pintar();
@@ -1694,7 +1720,7 @@ function irA(dom, mod){
   document.getElementById('mControlar').classList.toggle('act', modo==='controlar');
   if(secc==='tab-bole')renderBole();
   else if(secc==='tab-barraControl')renderBarra();
-  else if(secc==='tab-barraCarga'){ bInit(); renderCarrito(); bResumen(); }
+  else if(secc==='tab-barraCarga'){ bInit(); renderCarrito(); actualizarPrecioSec(); bResumen(); }
 }
 // compatibilidad: viejas llamadas a tab('carga'/'bole')
 function tab(t){ irA('bole', t==='carga'?'cargar':'controlar'); }
