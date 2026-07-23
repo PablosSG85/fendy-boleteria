@@ -303,6 +303,11 @@
   .mBtn{font-weight:650;}
   .pill,.histAbierta{font-weight:600;}
   .brand h1{font-weight:600;}
+
+  /* ===== PREDICTIVO FANTASMA ===== */
+  .predWrap{position:relative;}
+  .predGhost{position:absolute; inset:0; pointer-events:none; overflow:hidden; color:transparent; z-index:1;}
+  .predGhost i{font-style:normal; color:rgba(157,147,171,.55);}
 </style>
 </head>
 <body>
@@ -424,7 +429,7 @@
   <!-- ================= BARRA — CARGA ================= -->
   <section id="tab-barraCarga" class="hide">
     <label>Nombre y apellido</label>
-    <input type="text" id="bNombre" list="nombresPrevios" placeholder="Ej: Ailen Villaverde" autocomplete="off">
+    <input type="text" id="bNombre" placeholder="Ej: Ailen Villaverde" autocomplete="off">
     <datalist id="nombresPrevios"></datalist>
     <div id="bDupAviso"></div>
 
@@ -1110,7 +1115,7 @@ function bInit(){
     +`<button type="button" class="chip" onclick="bOtroPrecio()">Otro…</button>`
     +`<button type="button" class="chip" id="bChipCambio" style="border-color:var(--ext);color:var(--ext)" onclick="bUpgrade()"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> Upgrade / cambio</button>`;
   document.getElementById('bFirma').innerHTML=`Se carga a nombre de <b>${esc(yo.nombre)}</b>.`;
-  document.getElementById('bNombre').oninput=()=>{ bResumen(); bHint(); sugerirDatalist(); };
+  document.getElementById('bNombre').oninput=()=>{ bResumen(); bHint(); };
 }
 function bSetTipo(t, el){
   document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel'));
@@ -1380,6 +1385,10 @@ function sugerirDatalist(){
 function sugerirBole(){
   const ta=document.getElementById('fNombres'), box=document.getElementById('fSug'); if(!ta||!box)return;
   if(!ta.value.trim()){ box.innerHTML=''; return; }
+  // si hay prediccion fantasma de prefijo, no duplicar con chips
+  { const v=ta.value, pos=ta.selectionStart??v.length;
+    const ini=v.lastIndexOf('\n', pos-1)+1; let fin=v.indexOf('\n', pos); if(fin<0)fin=v.length;
+    if(candidatoPara(v.slice(ini,fin))){ box.innerHTML=''; return; } }
   const lineas=ta.value.split('\n');
   let pos=ta.selectionStart??ta.value.length, idx=lineas.length-1, acc=0;
   for(let i=0;i<lineas.length;i++){ if(pos<=acc+lineas[i].length){ idx=i; break; } acc+=lineas[i].length+1; }
@@ -1395,6 +1404,79 @@ function usarSugerencia(idx,nombre){
   document.getElementById('fSug').innerHTML=''; ta.focus();
 }
 document.getElementById('fNombres').addEventListener('input', sugerirBole);
+
+/* ---------- predictivo fantasma: espacio acepta palabra por palabra ---------- */
+function nrmc(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function poolNombres(){
+  const s=new Set(), out=[];
+  const add=n=>{ const k=nrmc(n); if(n&&!s.has(k)){ s.add(k); out.push(n); } };
+  items.forEach(i=>add(i.nombre)); consumos.forEach(c=>add(c.nombre));
+  CLIENTES.forEach(add);
+  return out;
+}
+function candidatoPara(typed){
+  const q=nrmc(typed); if(q.length<1) return null;
+  for(const c of poolNombres()){ if(nrmc(c).startsWith(q) && c.length>typed.length) return c; }
+  return null;
+}
+function crearPredictivo(el, esTA){
+  const wrap=document.createElement('div'); wrap.className='predWrap';
+  el.parentNode.insertBefore(wrap, el); wrap.appendChild(el);
+  const g=document.createElement('div'); g.className='predGhost'; wrap.appendChild(g);
+  const cs=getComputedStyle(el);
+  for(const p of ['fontFamily','fontSize','fontWeight','letterSpacing','lineHeight','textTransform',
+                  'paddingTop','paddingRight','paddingBottom','paddingLeft','borderRadius'])
+    g.style[p]=cs[p];
+  g.style.border=cs.borderTopWidth+' solid transparent';
+  g.style.whiteSpace=esTA?'pre-wrap':'pre';
+  let cand=null, K=0;
+  function lineaActual(){
+    if(!esTA) return {antes:'', linea:el.value, despues:''};
+    const v=el.value, pos=el.selectionStart??v.length;
+    const ini=v.lastIndexOf('\n', pos-1)+1;
+    let fin=v.indexOf('\n', pos); if(fin<0)fin=v.length;
+    return {antes:v.slice(0,ini), linea:v.slice(ini,fin), despues:v.slice(fin)};
+  }
+  function pintar(){
+    const {antes, linea}=lineaActual();
+    cand=candidatoPara(linea); K=linea.length;
+    if(!cand||!linea.trim()){ g.innerHTML=''; cand=null; return; }
+    const resto=cand.slice(K);
+    g.innerHTML=(esTA?esc(antes):'')+'<span style="visibility:hidden">'+esc(esTA?linea:el.value)+'</span><i>'+esc(resto)+'</i>';
+    g.scrollTop=el.scrollTop; g.scrollLeft=el.scrollLeft;
+  }
+  function aceptar(){
+    // completa la palabra en curso con la version canonica (mayusculas y tildes del padron)
+    let fin=cand.indexOf(' ', K); if(fin<0)fin=cand.length;
+    const completo=fin>=cand.length;
+    const nueva=cand.slice(0,fin)+(completo?'':' ');
+    const {antes, despues}=lineaActual();
+    el.value=antes+nueva+despues;
+    const pos=(antes+nueva).length;
+    el.setSelectionRange(pos,pos);
+    pintar();
+    if(el.id==='bNombre'){ try{ bResumen(); bHint(); }catch(_){}}
+  }
+  el.addEventListener('input', e=>{
+    if(e.inputType==='insertText' && e.data===' ' && cand){
+      // deshacer el espacio recien tipeado y aceptar la prediccion
+      const pos=el.selectionStart;
+      el.value=el.value.slice(0,pos-1)+el.value.slice(pos);
+      el.setSelectionRange(pos-1,pos-1);
+      aceptar();
+      return;
+    }
+    pintar();
+  });
+  el.addEventListener('keyup', e=>{ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','End','Home'].includes(e.key)) pintar(); });
+  el.addEventListener('click', pintar);
+  el.addEventListener('scroll', ()=>{ g.scrollTop=el.scrollTop; g.scrollLeft=el.scrollLeft; });
+  el.addEventListener('blur', ()=>{ setTimeout(()=>{ g.innerHTML=''; },150); });
+  el.addEventListener('focus', pintar);
+}
+crearPredictivo(document.getElementById('bNombre'), false);
+crearPredictivo(document.getElementById('fNombres'), true);
+
 
 function pintarQuien(){
   cargarClientes();
