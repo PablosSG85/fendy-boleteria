@@ -1496,42 +1496,41 @@ function crearPredictivo(el, esTA){
     g.innerHTML=(esTA?esc(antes):'')+'<span style="visibility:hidden">'+esc(esTA?linea:el.value)+'</span><i>'+esc(resto)+'</i>';
     g.scrollTop=el.scrollTop; g.scrollLeft=el.scrollLeft;
   }
-  function aceptar(){
-    // completa la palabra en curso con la version canonica (mayusculas y tildes del padron)
-    let fin=cand.indexOf(' ', K); if(fin<0)fin=cand.length;
-    const completo=fin>=cand.length;
-    const nueva=cand.slice(0,fin)+(completo?'':' ');
+  function accionEspacio(){
+    // que hace UN espacio segun donde este el cursor (spec de Pablo):
+    // 1) a mitad de palabra con prediccion -> termina la palabra (sin espacio final)
+    // 2) al final de una palabra completa   -> espacio literal (inicio del apellido)
+    // 3) sin prediccion                     -> espacio normal
     const {antes, despues}=lineaActual();
+    let nueva;
+    if(cand && K<cand.length){
+      if(cand[K]===' '){
+        nueva=cand.slice(0,K)+' ';           // palabra ya completa: canoniza + inicio del apellido
+      }else{
+        let f=cand.indexOf(' ', K); if(f<0)f=cand.length;
+        nueva=cand.slice(0,f);               // a mitad de palabra: la termina, sin espacio final
+      }
+    }else{
+      nueva=prevLinea+' ';                   // sin prediccion: espacio normal
+    }
     el.value=antes+nueva+despues;
     const pos=(antes+nueva).length;
     el.setSelectionRange(pos,pos);
     pintar();
     if(el.id==='bNombre'){ try{ bResumen(); bHint(); }catch(_){}}
   }
-  let prevLinea='', ultAceptado=0;
+  let prevLinea='';
   const _pintar=pintar;
   pintar=function(){ _pintar(); prevLinea=lineaActual().linea; };
   el.addEventListener('input', e=>{
-    const cur=lineaActual().linea;
-    // aparecio un espacio al final respecto de lo anterior => acepto la prediccion
-    // (comparo el texto, no la tecla: los teclados del celu mandan el espacio de mil formas)
-    if(cand && cur===prevLinea+' '){
-      const pos=el.selectionStart;
-      el.value=el.value.slice(0,pos-1)+el.value.slice(pos);
-      el.setSelectionRange(pos-1,pos-1);
-      ultAceptado=Date.now();
-      aceptar();
-      return;
-    }
-    // el teclado convirtio el doble espacio en punto ("Fede ." / "Fede. "): lo anulo
-    if(Date.now()-ultAceptado<3000 &&
-       (cur===prevLinea.replace(/ $/,'')+'. ' || cur===prevLinea+'. ' || cur===prevLinea+'.')){
-      const {antes, despues}=lineaActual();
-      el.value=antes+prevLinea+despues;
-      const pos=(antes+prevLinea).length;
-      el.setSelectionRange(pos,pos);
-      pintar();
-      return;
+    const ctx=lineaActual(), cur=ctx.linea;
+    const restaurar=()=>{ el.value=ctx.antes+prevLinea+ctx.despues;
+      const p=(ctx.antes+prevLinea).length; el.setSelectionRange(p,p); };
+    // espacio tipeado (comparo texto: los teclados del celu lo mandan de mil formas)
+    if(cur===prevLinea+' '){ restaurar(); accionEspacio(); return; }
+    // el teclado convirtio el doble espacio en punto: es un espacio mas
+    if(cur===prevLinea.replace(/ $/,'')+'. ' || cur===prevLinea+'.' || cur===prevLinea+'. '){
+      restaurar(); accionEspacio(); return;
     }
     pintar();
   });
