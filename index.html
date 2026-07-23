@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0d0d10">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0e0c11">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -308,6 +308,13 @@
   .predWrap{position:relative;}
   .predGhost{position:absolute; inset:0; pointer-events:none; overflow:hidden; color:transparent; z-index:1;}
   .predGhost i{font-style:normal; color:rgba(157,147,171,.55);}
+
+  /* ===== BORDES DEL CELULAR: zona del reloj y del gesto en oscuro ===== */
+  html{background:#0a090d;}
+  header{padding-top:calc(9px + env(safe-area-inset-top));}
+  .repHead{padding-top:calc(8px + env(safe-area-inset-top));}
+  #login{padding-top:calc(22px + env(safe-area-inset-top));}
+  .searchWrap{top:calc(56px + env(safe-area-inset-top));}
 </style>
 </head>
 <body>
