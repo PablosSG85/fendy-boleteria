@@ -430,7 +430,7 @@
   <section id="tab-bole" class="hide">
     <div class="tot" id="totales"></div>
     <div class="searchWrap">
-      <input type="search" id="buscar" placeholder="🔍 Buscar nombre…" autocomplete="off" oninput="renderBole()">
+      <input type="search" id="buscar" placeholder="Buscar nombre…" autocomplete="off" oninput="renderBole()">
     </div>
     <div id="listaBole"><div class="cargando">Cargando…</div></div>
   </section>
@@ -463,7 +463,7 @@
     <div class="ayuda" id="bFirma"></div>
     <button class="btnMain" id="bGuardar" onclick="cargarBebida()"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;stroke-width:2.6"><path d="M4 12.5 9.5 18 20 6.5"/></svg> CARGAR PEDIDO</button>
 
-    <div class="secTitle">Últimos cargados</div>
+    <div class="secTitle">Cargados de esta noche</div>
     <div id="bListaCarga"></div>
   </section>
 
@@ -471,7 +471,7 @@
   <section id="tab-barraControl" class="hide">
     <div class="tot" id="barraTot"></div>
     <div class="searchWrap">
-      <input type="search" id="buscarBarra" placeholder="🔍 Buscar persona…" autocomplete="off" oninput="renderBarra()">
+      <input type="search" id="buscarBarra" placeholder="Buscar persona…" autocomplete="off" oninput="renderBarra()">
     </div>
     <div id="listaBarra"><div class="cargando">Cargando…</div></div>
     <div id="barraEntregados"></div>
@@ -488,7 +488,7 @@
       <div><div id="fTotal" style="font-size:24px;font-weight:800;color:var(--pago)">$0</div>
         <div id="fCant" style="font-size:12px;color:var(--dim)">nada elegido</div></div>
     </div>
-    <button class="mBtn pri" id="fConfirmar" disabled onclick="confirmarBarra()">✔ Confirmar entrega</button>
+    <button class="mBtn pri" id="fConfirmar" disabled onclick="confirmarBarra()"><svg class="ic" viewBox="0 0 24 24" style="width:17px;height:17px;stroke-width:2.6"><path d="M4 12.5 9.5 18 20 6.5"/></svg> Confirmar entrega</button>
     <button class="mBtn gho" onclick="cerrarFoco()">Cancelar</button>
   </div>
 </div></div>
@@ -513,7 +513,7 @@ const esAdmin=()=>!!yo&&yo.rol==='admin';
 const ESTACIONES_BOLE=['Arriba','Abajo'];
 let miEstacion=localStorage.getItem('fendy_estacion')||'';
 function elegirEstacion(){
-  const btns=ESTACIONES_BOLE.map(e=>({txt:'🚪 Boletería '+e,tipo:'pri',fn:()=>{
+  const btns=ESTACIONES_BOLE.map(e=>({txt:ICO.puerta+' Boletería '+e,tipo:'pri',fn:()=>{
     miEstacion=e; localStorage.setItem('fendy_estacion',e); pintarQuien(); aviso('Boletería '+e+' ✓','ok');
   }}));
   modal('¿En qué boletería estás?','Elegí tu puesto. Queda guardado en esta compu/celu; lo podés cambiar cuando quieras.','',btns);
@@ -593,11 +593,11 @@ function salir(){
     {txt:'Sí, salir',tipo:'pri',fn:cerrarSesion},{txt:'Cancelar',tipo:'gho'}]);
 }
 function menu(){
-  const b=[{txt:'🔑 Cambiar mi contraseña',tipo:'sec',fn:pedirNuevaClave}];
-  if(yo.rol==='boleteria')b.push({txt:'🚪 Cambiar boletería (Arriba/Abajo)',tipo:'sec',fn:elegirEstacion});
+  const b=[{txt:ICO.llave+' Cambiar mi contraseña',tipo:'sec',fn:pedirNuevaClave}];
+  if(yo.rol==='boleteria')b.push({txt:ICO.puerta+' Cambiar boletería (Arriba/Abajo)',tipo:'sec',fn:elegirEstacion});
   if(esAdmin()){
-    if(evento)b.push({txt:'📊 Reporte / cerrar noche',tipo:'sec',fn:verReporte});
-    b.push({txt:'🗂️ Noches anteriores',tipo:'sec',fn:verHistorico});
+    if(evento)b.push({txt:ICO.grafico+' Reporte / cerrar noche',tipo:'sec',fn:verReporte});
+    b.push({txt:ICO.archivo+' Noches anteriores',tipo:'sec',fn:verHistorico});
   }
   b.push({txt:'⏻ Cerrar sesión',tipo:'sec',fn:salir});
   b.push({txt:'Cerrar',tipo:'gho'});
@@ -619,7 +619,7 @@ function pedirNuevaClave(){
 function hoyISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function abrirNoche(){
   if(!esAdmin())return;
-  modal('🌙 Abrir una noche','Elegí la fecha del evento. Aunque sea la madrugada del domingo, usá la fecha del sábado.',
+  modal('Abrir una noche','Elegí la fecha del evento. Aunque sea la madrugada del domingo, usá la fecha del sábado.',
     `<label>Fecha del evento</label><input type="date" id="nfecha" value="${hoyISO()}">`,
     [{txt:'Abrir esta noche',tipo:'pri',mantener:true,accion:async()=>{
         const f=document.getElementById('nfecha').value;
@@ -640,7 +640,7 @@ function modal(tit,sub,body,botones){
   const cont=document.getElementById('modalBtns'); cont.innerHTML='';
   botones.forEach(b=>{
     const el=document.createElement('button');
-    el.className='mBtn '+(b.tipo||'sec'); el.textContent=b.txt;
+    el.className='mBtn '+(b.tipo||'sec'); el.innerHTML=b.txt;
     el.onclick=()=>{ if(b.mantener){b.accion&&b.accion();} else {cerrarModal(); b.fn&&b.fn();} };
     cont.appendChild(el);
   });
@@ -666,7 +666,7 @@ async function verHistorico(){
   try{
     const lista=await api('/rest/v1/rpc/historico_noches',{method:'POST',body:'{}'});
     aviso('');
-    document.getElementById('repTit').textContent='🗂️ Noches anteriores';
+    document.getElementById('repTit').textContent='Noches anteriores';
     document.getElementById('repSub').textContent=`${lista.length} noche${lista.length!==1?'s':''} registrada${lista.length!==1?'s':''}`;
     document.getElementById('repBody').innerHTML = lista.length ? lista.map(n=>`
       <button class="histItem" onclick="abrirReporteHistorico('${n.id}',${n.abierto})">
@@ -698,17 +698,17 @@ function renderReporte(rep,opts){
   opts=opts||{};
   const {permitirCerrar=false, cerrada=false, desdeHistorico=false}=opts;
   const t=rep.totales, c=rep.por_condicion, r=rep.ranking;
-  document.getElementById('repTit').textContent=cerrada?'✅ Noche cerrada':(desdeHistorico?'Reporte':'Reporte de la noche');
+  document.getElementById('repTit').textContent=cerrada?'Noche cerrada ✓':(desdeHistorico?'Reporte':'Reporte de la noche');
   document.getElementById('repSub').textContent=fechaLarga(rep.fecha);
   const condRow=(lbl,cls,o)=>`<tr><td><span class="badge ${cls}">${lbl}</span></td><td>${o.anotados}</td><td>${o.entraron}</td></tr>`;
   const soc=rep.por_socio||[];
   const rank=(k,box)=>box?`<div class="repRankBox"><div class="k">${k}</div><div class="v">${esc(box.socio)} <small>· ${box.valor}</small></div></div>`
                           :`<div class="repRankBox"><div class="k">${k}</div><div class="v" style="color:var(--dim)">—</div></div>`;
-  const rankRec=r.mas_recaudado?`<div class="repRankBox"><div class="k">💰 Más recaudó</div><div class="v">${esc(r.mas_recaudado.socio)} <small>· ${money(r.mas_recaudado.valor)}</small></div></div>`:'';
+  const rankRec=r.mas_recaudado?`<div class="repRankBox"><div class="k">Más recaudó</div><div class="v">${esc(r.mas_recaudado.socio)} <small>· ${money(r.mas_recaudado.valor)}</small></div></div>`:'';
   let h='';
 
   if(!rep.atribucion_confiable)
-    h+=`<div class="repWarn">⚠️ <b>Los datos por socio de esta noche no son confiables</b> por el error de identidad que ya corregimos. Los totales de abajo sí son correctos. A partir de la próxima noche, todo lo de cada socio va a ser exacto.</div>`;
+    h+=`<div class="repWarn">${ICO.alerta} <b>Los datos por socio de esta noche no son confiables</b> por el error de identidad que ya corregimos. Los totales de abajo sí son correctos. A partir de la próxima noche, todo lo de cada socio va a ser exacto.</div>`;
 
   h+=`<div class="repSec">Resumen</div>
     <div class="repTiles">
@@ -733,9 +733,9 @@ function renderReporte(rep,opts){
 
   h+=`<div class="repSec">Ranking${rep.atribucion_confiable?'':' (referencial)'}</div>
     <div class="repRank">
-      ${rank('🏆 Más invitados',r.mas_invitados)}
-      ${rank('🎟️ Más free',r.mas_free)}
-      ${rank('💸 Más sin recargo',r.mas_descuento)}
+      ${rank('Más invitados',r.mas_invitados)}
+      ${rank('Más free',r.mas_free)}
+      ${rank('Más sin recargo',r.mas_descuento)}
       ${rankRec}
     </div>`;
 
@@ -744,7 +744,7 @@ function renderReporte(rep,opts){
     h+=`<div class="repSec">Ingresos por boletería</div>
       <div style="overflow-x:auto"><table class="repTable">
         <thead><tr><th>Boletería</th><th>Ingresos marcados</th></tr></thead>
-        <tbody>${bol.map(x=>`<tr><td><b>🚪 ${esc(x.estacion)}</b></td><td>${x.ingresos}</td></tr>`).join('')}</tbody></table></div>`;
+        <tbody>${bol.map(x=>`<tr><td><b>${esc(x.estacion)}</b></td><td>${x.ingresos}</td></tr>`).join('')}</tbody></table></div>`;
 
   h+=`<div class="repSec">Por socio${rep.atribucion_confiable?'':' (referencial)'}</div>
     <div style="overflow-x:auto"><table class="repTable">
@@ -755,7 +755,7 @@ function renderReporte(rep,opts){
   const B=rep.barra;
   if(B && B.totales && B.totales.items>0){
     const bt=B.totales;
-    h+=`<div class="repSec">🍸 Barra — consumos</div>
+    h+=`<div class="repSec">${ICO.copa} Barra — consumos</div>
       <div class="repTiles">
         <div class="repTile"><b>${bt.items}</b><span>cargados</span></div>
         <div class="repTile"><b style="color:var(--ok)">${bt.entregados}</b><span>entregados</span></div>
@@ -774,7 +774,7 @@ function renderReporte(rep,opts){
       h+=`<div class="repSec">Entregas por barra</div>
         <div style="overflow-x:auto"><table class="repTable">
           <thead><tr><th>Barra</th><th>Entregas</th><th>Valor</th></tr></thead>
-          <tbody>${pb.map(x=>`<tr><td><b>🍸 ${esc(x.barra)}</b></td><td>${x.entregas}</td><td class="dinero">${money(x.valor)}</td></tr>`).join('')}</tbody></table></div>`;
+          <tbody>${pb.map(x=>`<tr><td><b>${ICO.copa} ${esc(x.barra)}</b></td><td>${x.entregas}</td><td class="dinero">${money(x.valor)}</td></tr>`).join('')}</tbody></table></div>`;
     const qc=B.quien_cargo||[];
     if(qc.length)
       h+=`<div class="repSec">Quién cargó consumos${rep.atribucion_confiable?'':''}</div>
@@ -784,22 +784,22 @@ function renderReporte(rep,opts){
     const sr=B.sin_retirar||[];
     h+=`<div class="repSec">Consumos sin retirar (${sr.length})</div>`;
     h+= sr.length ? sr.map(x=>`<div class="repNo"><span>${esc(x.nombre)}</span><small>${esc(x.tipo)}${x.cambio?' · upgrade de '+esc(x.cambio):(x.precio?' · '+money(x.precio):' · sin cargo')}</small></div>`).join('')
-                  : `<div class="repNo"><span style="color:var(--dim)">Se retiró todo 🎉</span></div>`;
+                  : `<div class="repNo"><span style="color:var(--dim)">Se retiró todo</span></div>`;
   }else{
-    h+=`<div class="repSec">🍸 Barra — consumos</div>
+    h+=`<div class="repSec">${ICO.copa} Barra — consumos</div>
       <div class="repNo"><span style="color:var(--dim)">No se cargaron consumos esta noche.</span></div>`;
   }
 
   const ns=rep.no_shows||[];
   h+=`<div class="repSec">No vinieron (${ns.length} fichas)</div>`;
   h+= ns.length ? ns.map(n=>`<div class="repNo"><span>${esc(n.nombre)}</span><small>${noShowTxt(n)}</small></div>`).join('')
-               : `<div class="repNo"><span style="color:var(--dim)">Vinieron todos 🎉</span></div>`;
+               : `<div class="repNo"><span style="color:var(--dim)">Vinieron todos</span></div>`;
 
   h+=`<div class="repBtns">
-      <button class="mBtn sec" onclick="enviarWhatsapp()">📲 Enviar por WhatsApp</button>
-      <button class="mBtn gho" onclick="copiarReporte()">📋 Copiar el texto</button>
+      <button class="mBtn sec" onclick="enviarWhatsapp()">${ICO.enviar} Enviar por WhatsApp</button>
+      <button class="mBtn gho" onclick="copiarReporte()">${ICO.copiar} Copiar el texto</button>
       ${permitirCerrar
-        ? `<button class="mBtn pri" onclick="confirmarCerrar()">🏁 Finalizar y cerrar la noche</button>
+        ? `<button class="mBtn pri" onclick="confirmarCerrar()">${ICO.bandera} Finalizar y cerrar la noche</button>
            <button class="mBtn gho" onclick="cerrarReporte()">Todavía no, volver</button>`
         : desdeHistorico
           ? `<button class="mBtn sec" onclick="verHistorico()">← Volver a las noches</button>
@@ -917,7 +917,7 @@ function chequearDup(){
     filas+=`<div class="dupIt"><b>${esc(it.nombre)}</b> — ${esc(resumenCond(it))}
       <small>lo anotó ${esc(it.autoriza)} a las ${hora(it)}${it.grupo?' · '+esc(it.grupo):''}</small></div>`;
   }));
-  el.innerHTML=filas?`<div class="dup"><div class="dupTit">⚠️ YA HAY ALGUIEN ANOTADO ASÍ</div>${filas}</div>`:'';
+  el.innerHTML=filas?`<div class="dup"><div class="dupTit">${ICO.alerta} YA HAY ALGUIEN ANOTADO ASÍ</div>${filas}</div>`:'';
 }
 
 /* ---------- formulario ---------- */
@@ -1022,7 +1022,7 @@ function guardar(){
     btns.push({txt:nuevas.length>1?'Anotar todos igual':'Anotar igual, es otra persona',
       tipo:(nuevas.length>1&&soloNuevos.length)?'sec':'pri',fn:()=>enviar(nuevas)});
     btns.push({txt:'Cancelar',tipo:'gho'});
-    modal(repes.length>1?`⚠️ ${repes.length} ya estaban anotados`:'⚠️ Ya está anotado',
+    modal(repes.length>1?`${repes.length} ya estaban anotados`:'Ya está anotado',
       'Fijate si es la misma persona antes de anotarla de nuevo.',body,btns);
     return;
   }
@@ -1101,6 +1101,25 @@ const PRECIOS_SUGERIDOS={
 };
 let bTipo='', bPrecio=null, bCambio='', bCantN=1, bChipsListos=false, carrito=[], bPrecioSug=false;
 let bUpgradeModo=false;   // true = ya toco 🔄 y falta elegir el trago NUEVO
+
+/* ---------- iconos vectoriales (nada de emojis en la interfaz) ---------- */
+const ICO={
+  copa:'<svg class="ic" viewBox="0 0 24 24"><path d="M4 3h16l-7 8v7m-3 3h6m-3-3v3M4 3l7 8"/></svg>',
+  tilde:'<svg class="ic" viewBox="0 0 24 24"><path d="M4 12.5 9.5 18 20 6.5"/></svg>',
+  mas:'<svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  deshacer:'<svg class="ic" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
+  alerta:'<svg class="ic" viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5m0 3v.01"/></svg>',
+  enviar:'<svg class="ic" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>',
+  copiar:'<svg class="ic" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
+  bandera:'<svg class="ic" viewBox="0 0 24 24"><path d="M5 22V3"/><path d="M5 3h13l-2.5 4.5L18 12H5"/></svg>',
+  grupo:'<svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M16.5 13.7a6.5 6.5 0 0 1 5 6.3"/></svg>',
+  nota:'<svg class="ic" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  llave:'<svg class="ic" viewBox="0 0 24 24"><circle cx="7.5" cy="16.5" r="4.5"/><path d="m10.7 13.3 9.3-9.3M15 8l3 3m1-5 2 2"/></svg>',
+  puerta:'<svg class="ic" viewBox="0 0 24 24"><path d="M14 3h5a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-5"/><path d="M14 2v20l-10-2V4l10-2z"/><path d="M11 11.5v1"/></svg>',
+  grafico:'<svg class="ic" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M8 17V9m5 8V5m5 12v-6"/></svg>',
+  archivo:'<svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M10 13h4"/></svg>',
+  luna:'<svg class="ic" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>',
+};
 function colorTipo(t){
   const u=(t||'').toUpperCase();
   const fijos=[['SKYY','#7FA8C4'],['ABSOLUT','#A093C4'],['GREY GOOSE','#C4A96B'],['CIROC','#8B93C4'],['PRAVDA','#C487A3'],
@@ -1161,7 +1180,7 @@ function bOtroFiltrar(){
     return `<button type="button" class="chip" style="border-color:${c};color:${c}" onclick="bSetTipo('${esc(t).replace(/'/g,"\\'")}')">${esc(t)}</button>`;}).join('');
   // si lo tipeado no coincide exacto con nada, ofrecer cargarlo tal cual (ultima opcion)
   if(q && !lista.includes(q))
-    html+=`<button type="button" class="chip" onclick="bSetTipo('${esc(q).replace(/'/g,"\\'")}')">➕ Cargar “${esc(q)}”</button>`;
+    html+=`<button type="button" class="chip" onclick="bSetTipo('${esc(q).replace(/'/g,"\\'")}')">${ICO.mas} Cargar “${esc(q)}”</button>`;
   document.getElementById('bOtroLista').innerHTML=html||'<span style="color:var(--dim);font-size:13px">Escribí para buscar…</span>';
 }
 // Al elegir un trago con precio sugerido, aparece el chip ⭐ ya seleccionado (se puede pisar tocando otro precio).
@@ -1232,7 +1251,7 @@ function bAgregar(){
 function bQuitar(i){ carrito.splice(i,1); renderCarrito(); }
 function renderCarrito(){
   const el=document.getElementById('bCarrito'); if(!el)return;
-  if(!carrito.length){ el.innerHTML='<div class="cargando" style="padding:14px 0">Elegí abajo qué se lleva y tocá “Agregar al pedido” 👇</div>'; return; }
+  if(!carrito.length){ el.innerHTML='<div class="cargando" style="padding:14px 0">Elegí abajo qué se lleva y tocá “Agregar al pedido”</div>'; return; }
   el.innerHTML=carrito.map((it,i)=>{const col=colorTipo(it.tipo);
     const dCol = it.cambio ? 'var(--ext)' : it.precio ? 'var(--pago)' : 'var(--free)';
     const detalle = it.cambio ? `<svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> UPGRADE${it.cambio!=='—'?' de '+esc(it.cambio):''}`
@@ -1246,7 +1265,7 @@ function bHint(){
   const n=nrm(document.getElementById('bNombre').value);
   const el=document.getElementById('bDupAviso'); if(n.length<3){el.innerHTML='';return;}
   const ya=consumos.filter(c=>nrm(c.nombre)===n);
-  el.innerHTML=ya.length?`<div class="dup"><div class="dupTit">🍸 ESTA PERSONA YA TIENE CARGADO</div>${ya.map(c=>`<div class="dupIt">${esc(c.tipo)} — ${c.precio?money(c.precio):'sin cargo'}${c.entregado?' <small style="color:var(--free)">(entregado)</small>':''}</div>`).join('')}</div>`:'';
+  el.innerHTML=ya.length?`<div class="dup"><div class="dupTit">${ICO.copa} ESTA PERSONA YA TIENE CARGADO</div>${ya.map(c=>`<div class="dupIt">${esc(c.tipo)} — ${c.precio?money(c.precio):'sin cargo'}${c.entregado?' <small style="color:var(--free)">(entregado)</small>':''}</div>`).join('')}</div>`:'';
 }
 async function cargarBebida(){
   if(!evento)return alert('No hay noche abierta.');
@@ -1274,15 +1293,32 @@ async function cargarBebida(){
 }
 function renderBarraCarga(){
   const el=document.getElementById('bListaCarga'); if(!el)return;
-  el.innerHTML=consumos.slice(0,15).map(c=>{const col=colorTipo(c.tipo);
-    return `<div class="card">
-      <div class="cardTop"><div><div class="nombre">${esc(c.nombre)}</div>
-        <div class="meta">${hora(c)} · cargó ${esc(c.autoriza)}${c.entregado?` · <b style="color:var(--ok)">entregado (${esc(c.entregado_por||'')})</b>`:''}</div></div>
-        <button class="btnDel" onclick="borrarConsumo('${c.id}')">✕</button></div>
-      <div class="badges"><span class="badge" style="border-color:${col};color:${col};background:${col}22">${esc(c.tipo)}</span>
-        ${c.cambio?`<span class="badge b-ext"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> UPGRADE${c.cambio!=='—'?' de '+esc(c.cambio):''}</span>`
-          :`<span class="badge ${c.precio?'b-pago':'b-free'}">${c.precio?money(c.precio):'SIN CARGO'}</span>`}</div>
-    </div>`;}).join('')||'<div class="cargando">Todavía no cargaste bebidas.</div>';
+  // agrupado por persona, como lo ve la barra: tocas y se abre el detalle
+  const por={};
+  consumos.forEach(c=>{ (por[c.nombre]=por[c.nombre]||[]).push(c); });
+  const nombres=Object.keys(por).sort((a,b)=>new Date(por[b][0].creado_en||0)-new Date(por[a][0].creado_en||0));
+  el.innerHTML=nombres.map(n=>{
+    const list=por[n], pend=list.filter(c=>!c.entregado).length;
+    const chips=list.slice(0,4).map(c=>{const col=colorTipo(c.tipo);
+      return `<span class="chip" style="font-size:12px;padding:4px 10px;border-color:${col};color:${col}">${esc(c.tipo)}</span>`;}).join('')
+      +(list.length>4?`<span class="chip" style="font-size:12px;padding:4px 10px">+${list.length-4}</span>`:'');
+    return `<div class="pCard" data-nombre="${esc(n)}" onclick="abrirCargaPersona(this.dataset.nombre)">
+      <div style="min-width:0"><div class="nombre">${esc(n)}</div>
+        <div class="meta">${list.length} consumo${list.length!==1?'s':''}${pend?` · ${pend} sin retirar`:' · todo entregado'}</div>
+        <div class="chips" style="margin-top:7px">${chips}</div></div>
+      <div class="histFlecha">›</div></div>`;
+  }).join('')||'<div class="cargando">Todavía no hay consumos cargados esta noche.</div>';
+}
+function abrirCargaPersona(n){
+  const list=consumos.filter(c=>c.nombre===n);
+  if(!list.length)return;
+  const body=list.map(c=>{const col=colorTipo(c.tipo);
+    const det=c.cambio?('upgrade de '+esc(c.cambio)):(c.precio?money(c.precio):'sin cargo');
+    return `<div class="repNo" style="align-items:center">
+      <span style="min-width:0"><span class="badge" style="border-color:${col};color:${col};background:${col}18">${esc(c.tipo)}</span>
+        <small style="color:var(--dim)"> ${det} · cargó <b style="color:var(--txt)">${esc(c.autoriza||'—')}</b>${c.entregado?` · entregado (${esc(c.entregado_por||'')})`:' · sin retirar'}</small></span>
+      ${esAdmin()?`<button class="btnDel" onclick="cerrarModal();borrarConsumo('${c.id}')">✕</button>`:''}</div>`;}).join('');
+  modal(n, list.length+' consumo'+(list.length!==1?'s':'')+' esta noche', body, [{txt:'Cerrar',tipo:'gho'}]);
 }
 function borrarConsumo(id){
   if(!esAdmin())return; const c=consumos.find(x=>x.id===id); if(!c)return;
@@ -1312,7 +1348,7 @@ function renderBarra(){
   }).join('')||`<div class="sinResultados">${f?'Nadie con ese nombre.':'No hay consumos pendientes.'}</div>`;
   const de=consumos.filter(c=>c.entregado).sort((a,b)=>String(b.entregado_at).localeCompare(String(a.entregado_at)));
   document.getElementById('barraEntregados').innerHTML=de.length
-    ? `<div class="secTitle">Ya entregados (${de.length})</div>`+de.map(c=>`<div class="repNo" style="display:flex;justify-content:space-between;align-items:center"><span><b>${esc(c.nombre)}</b> · ${esc(c.tipo)} <small style="color:var(--dim)">· ${c.precio?money(c.precio):'sin cargo'}${esAdmin()&&c.entregado_por?' · '+esc(c.entregado_por):''}</small></span><button class="btnUndo" style="flex:none;padding:6px 12px" onclick="deshacerBarra('${c.id}')">↩</button></div>`).join('')
+    ? `<div class="secTitle">Ya entregados (${de.length})</div>`+de.map(c=>`<div class="repNo" style="display:flex;justify-content:space-between;align-items:center"><span><b>${esc(c.nombre)}</b> · ${esc(c.tipo)} <small style="color:var(--dim)">· ${c.precio?money(c.precio):'sin cargo'}${esAdmin()&&c.entregado_por?' · '+esc(c.entregado_por):''}</small></span><button class="btnUndo" style="flex:none;padding:6px 12px" onclick="deshacerBarra('${c.id}')">${ICO.deshacer}</button></div>`).join('')
     : '';
   const pend2=consumos.filter(c=>!c.entregado);
   document.getElementById('barraTot').innerHTML=`
@@ -1571,15 +1607,15 @@ function entrarModoSinNoche(){
 async function renderSinNoche(){
   const cont=document.getElementById('tab-sinNoche');
   if(!esAdmin()){
-    cont.innerHTML=`<div class="sinBox"><div class="sinIcon">🌙</div>
+    cont.innerHTML=`<div class="sinBox"><div class="sinIcon"><svg viewBox="0 0 24 24" style="width:54px;height:54px;fill:none;stroke:var(--oro);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></div>
       <div class="sinTit">Todavía no hay una noche abierta</div>
       <div class="sinSub">Esperá a que un socio la abra.<br>La pantalla se actualiza sola.</div></div>`;
     return;
   }
-  cont.innerHTML=`<div class="sinBox"><div class="sinIcon">🌙</div>
+  cont.innerHTML=`<div class="sinBox"><div class="sinIcon"><svg viewBox="0 0 24 24" style="width:54px;height:54px;fill:none;stroke:var(--oro);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></div>
       <div class="sinTit">No hay ninguna noche abierta</div>
       <div class="sinSub">Abrí una para empezar a anotar.</div></div>
-    <button class="btnMain" onclick="abrirNoche()">🌙 Abrir una noche</button>
+    <button class="btnMain" onclick="abrirNoche()"><svg class="ic" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg> Abrir una noche</button>
     <div class="repSec">Noches anteriores</div>
     <div id="sinHist"><div class="cargando">Cargando…</div></div>`;
   try{
@@ -1597,7 +1633,7 @@ async function renderSinNoche(){
 function badges(it){
   let h='';
   CONDS.forEach(c=>{ if(it[c.k])h+=`<span class="badge ${c.cls}">${c.lbl} ×${it[c.k]}${c.k==='pago'?' · $'+Number(it.precio).toLocaleString('es-AR'):''}</span>`; });
-  if(it.grupo)h+=`<span class="badge b-grupo">👥 ${esc(it.grupo)}</span>`;
+  if(it.grupo)h+=`<span class="badge b-grupo">${ICO.grupo} ${esc(it.grupo)}</span>`;
   return h;
 }
 function renderCarga(){
@@ -1638,8 +1674,8 @@ function card(it){
   if(tot===1){
     const c=act[0];
     cuerpo=`<div class="acciones">${fin
-      ?`<button class="btnUndo" onclick="mover('${it.id}','${c.k}',-1)">↩ Deshacer ingreso</button>`
-      :`<button class="btnIn" onclick="mover('${it.id}','${c.k}',1)">✔ INGRESÓ</button>`}</div>`;
+      ?`<button class="btnUndo" onclick="mover('${it.id}','${c.k}',-1)">${ICO.deshacer} Deshacer ingreso</button>`
+      :`<button class="btnIn" onclick="mover('${it.id}','${c.k}',1)">${ICO.tilde} INGRESÓ</button>`}</div>`;
   }else{
     cuerpo=act.map(c=>{
       const e=it[c.ing],n=it[c.k],falta=n-e;
@@ -1663,7 +1699,7 @@ function card(it){
       </div>
     </div>
     <div class="badges">${badges(it)}</div>
-    ${it.nota?`<div class="nota">📝 ${esc(it.nota)}</div>`:''}
+    ${it.nota?`<div class="nota">${ICO.nota} ${esc(it.nota)}</div>`:''}
     ${cuerpo}
   </div>`;
 }
@@ -1698,7 +1734,7 @@ function borrar(id){
     `<div class="dup"><div class="dupTit">SE VA A BORRAR</div>
       <div class="dupIt"><b>${esc(it.nombre)}</b> — ${esc(resumenCond(it))}
       <small>lo anotó ${esc(it.autoriza)} a las ${hora(it)}</small></div></div>
-     ${ing?`<div class="aviso">⚠️ Ojo: ${ing} de ${totalDe(it)} ya figuran como ingresados.</div>`:''}`,
+     ${ing?`<div class="aviso">${ICO.alerta} Ojo: ${ing} de ${totalDe(it)} ya figuran como ingresados.</div>`:''}`,
     [{txt:'Sí, borrar',tipo:'pri',fn:async()=>{
         try{ await api('/rest/v1/anotados?id=eq.'+id,{method:'DELETE'});
           items=items.filter(x=>x.id!==id); renderCarga(); renderBole(); aviso('Borrado','ok');
