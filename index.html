@@ -318,6 +318,43 @@
   .repHead{padding-top:calc(8px + env(safe-area-inset-top));}
   #login{padding-top:calc(22px + env(safe-area-inset-top));}
   .searchWrap{top:calc(56px + env(safe-area-inset-top));}
+
+  /* ===== MODO DENSO PC (>=900px): solo vistas de Controlar; celular intacto ===== */
+  @media (min-width:900px){
+    main{max-width:840px;}
+    #tab-carga,#tab-barraCarga,#tab-sinNoche{max-width:612px;margin:0 auto;}
+    #buscar,#buscarBarra{padding:9px 13px;font-size:14.5px;}
+    .searchWrap{padding:4px 0 8px;}
+    /* barra: un renglon finito por persona */
+    #tab-barraControl .pCard{padding:7px 14px;margin-bottom:6px;border-radius:11px;}
+    #tab-barraControl .pCard>div:first-child{display:flex;align-items:center;gap:12px;min-width:0;flex-wrap:wrap;}
+    #tab-barraControl .pCard .nombre{font-size:15.5px;}
+    #tab-barraControl .pCard .chips{margin-top:0!important;gap:5px;}
+    #tab-barraControl .pCard .chips .chip{font-size:11px;padding:2px 8px;}
+    #tab-barraControl .repNo{padding:5px 10px;font-size:12.5px;margin-bottom:4px;}
+    #tab-barraControl .secTitle{margin:12px 0 6px;}
+    /* boleteria control: fichas compactas */
+    #tab-bole .card{padding:8px 12px;margin-bottom:6px;}
+    #tab-bole .nombre{font-size:15.5px;}
+    #tab-bole .meta{font-size:11px;}
+    #tab-bole .badges{margin-top:5px;gap:5px;}
+    #tab-bole .badge{font-size:11.5px;padding:3px 8px;}
+    #tab-bole .nota{font-size:12.5px;padding:4px 9px;margin-top:6px;}
+    #tab-bole .cont{margin-top:6px;padding:5px 6px 5px 10px;}
+    #tab-bole .contLbl{font-size:10.5px;}
+    #tab-bole .contNum{font-size:13px;}
+    #tab-bole .contNum b{font-size:17px;}
+    #tab-bole .contBtn.mas{font-size:14px;padding:9px 14px;}
+    #tab-bole .contBtn.menos{font-size:16px;padding:8px 12px;}
+    #tab-bole .acciones{margin-top:7px;gap:6px;}
+    #tab-bole .btnIn{font-size:13.5px;padding:9px;}
+    #tab-bole .btnUndo{font-size:12px;padding:9px;}
+    #tab-bole .btnTodos{padding:7px;font-size:12px;margin-top:6px;}
+    #tab-bole .tot{gap:6px;margin-bottom:8px;}
+    #tab-bole .totBox{padding:6px 4px;}
+    #tab-bole .totBox b{font-size:18px;}
+    #tab-bole .totBox span{font-size:10px;}
+  }
 </style>
 </head>
 <body>
