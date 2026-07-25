@@ -565,6 +565,18 @@ function elegirEstacion(){
   }}));
   modal('¿En qué boletería estás?','Elegí tu puesto. Queda guardado en esta compu/celu; lo podés cambiar cuando quieras.','',btns);
 }
+// Multibarra: una sola cuenta que elige en qué barra está (por dispositivo).
+const BARRAS_LISTA=['VIP','Principal','Terraza','Entre Piso','Zebra'];
+let miBarra=localStorage.getItem('fendy_barra')||'';
+const esMultibarra=()=>!!yo&&yo.multibarra===true;
+function elegirBarra(){
+  const btns=BARRAS_LISTA.map(b=>({txt:ICO.copa+' '+b,tipo:'pri',fn:()=>{
+    miBarra=b; localStorage.setItem('fendy_barra',b); pintarQuien();
+    try{ renderBarra(); }catch(_){}
+    aviso('Barra '+b+' ✓','ok');
+  }}));
+  modal('¿En qué barra estás?','Elegí tu barra. Queda guardada en este dispositivo; la podés cambiar cuando quieras.','',btns);
+}
 const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
 /* ---------- conexión ---------- */
@@ -642,6 +654,7 @@ function salir(){
 function menu(){
   const b=[{txt:ICO.llave+' Cambiar mi contraseña',tipo:'sec',fn:pedirNuevaClave}];
   if(yo.rol==='boleteria')b.push({txt:ICO.puerta+' Cambiar boletería (Arriba/Abajo)',tipo:'sec',fn:elegirEstacion});
+  if(esMultibarra())b.push({txt:ICO.copa+' Cambiar barra',tipo:'sec',fn:elegirBarra});
   if(esAdmin()){
     if(evento)b.push({txt:ICO.grafico+' Reporte / cerrar noche',tipo:'sec',fn:verReporte});
     b.push({txt:ICO.archivo+' Noches anteriores',tipo:'sec',fn:verHistorico});
@@ -1394,13 +1407,13 @@ function renderBarra(){
         <div style="font-size:11px;color:var(--dim)">${its.length} por entregar</div></div>
         <div style="font-size:24px;color:var(--dim)">›</div></div></div>`;
   }).join('')||`<div class="sinResultados">${f?'Nadie con ese nombre.':'No hay consumos pendientes.'}</div>`;
-  const de=consumos.filter(c=>c.entregado).sort((a,b)=>String(b.entregado_at).localeCompare(String(a.entregado_at)));
+  const de=consumos.filter(c=>c.entregado && (!esMultibarra()||c.entregado_por===miBarra)).sort((a,b)=>String(b.entregado_at).localeCompare(String(a.entregado_at)));
   document.getElementById('barraEntregados').innerHTML=de.length
     ? `<div class="secTitle">Ya entregados (${de.length})</div>`+de.map(c=>`<div class="repNo" style="display:flex;justify-content:space-between;align-items:center"><span><b>${esc(c.nombre)}</b> · ${esc(c.tipo)} <small style="color:var(--dim)">· ${c.precio?money(c.precio):'sin cargo'}${esAdmin()&&c.entregado_por?' · '+esc(c.entregado_por):''}</small></span><button class="btnUndo" style="flex:none;padding:6px 12px" onclick="deshacerBarra('${c.id}')">${ICO.deshacer}</button></div>`).join('')
     : '';
   const pend2=consumos.filter(c=>!c.entregado);
   document.getElementById('barraTot').innerHTML=`
-    <div class="totBox"><b>${consumos.length}</b><span>consumos</span></div>
+    <div class="totBox"><b>${pend2.length+de.length}</b><span>consumos</span></div>
     <div class="totBox"><b style="color:var(--ok)">${de.length}</b><span>entregados</span></div>
     <div class="totBox"><b style="color:var(--pago)">${pend2.length}</b><span>pendientes</span></div>
     <div class="totBox"><b style="color:var(--pago)">${money(pend2.reduce((a,c)=>a+c.precio,0))}</b><span>a cobrar</span></div>`;
@@ -1438,12 +1451,13 @@ function bPick(idx,delta){
 }
 async function confirmarBarra(){
   const ids=[...bSel]; if(!ids.length)return;
-  try{ await api('/rest/v1/rpc/entregar_consumos',{method:'POST',body:JSON.stringify({p_ids:ids})});
+  if(esMultibarra() && !miBarra){ cerrarFoco(); elegirBarra(); return; }
+  try{ await api('/rest/v1/rpc/entregar_consumos',{method:'POST',body:JSON.stringify({p_ids:ids,p_barra:miBarra})});
     cerrarFoco(); aviso('Entregado ✓','ok'); await sincronizar();
   }catch(e){ alert('No se pudo: '+e.message); }
 }
 async function deshacerBarra(id){
-  try{ const ok=await api('/rest/v1/rpc/desentregar_consumo',{method:'POST',body:JSON.stringify({p_id:id})});
+  try{ const ok=await api('/rest/v1/rpc/desentregar_consumo',{method:'POST',body:JSON.stringify({p_id:id,p_barra:miBarra})});
     if(ok===false)aviso('Eso lo entregó otra barra — no lo podés deshacer'); else await sincronizar();
   }catch(e){ aviso(e.message); }
 }
@@ -1595,7 +1609,9 @@ crearPredictivo(document.getElementById('fNombres'), true);
 function pintarQuien(){
   cargarClientes();
   const rol=esAdmin()?'admin':(yo.rol==='barra'?'barra':'boletería');
-  const est=(yo&&yo.rol==='boleteria'&&miEstacion)?` · <b style="color:var(--txt)">${esc(miEstacion)}</b>`:'';
+  const est=(yo&&yo.rol==='boleteria'&&miEstacion)?` · <b style="color:var(--txt)">${esc(miEstacion)}</b>`
+    :(esMultibarra()&&miBarra)?` · <b style="color:var(--txt)">${esc(miBarra)}</b>`
+    :(esMultibarra())?` · <b style="color:var(--pago)">elegí barra</b>`:'';
   document.getElementById('quien').innerHTML=
     `${esc(yo.nombre)} <small>· ${rol}${est}</small><button onclick="menu()" title="Opciones">⋯</button>`;
 }
@@ -1605,7 +1621,7 @@ async function arrancar(){
     if(!uid)throw new Error('No pudimos leer tu sesión. Volvé a entrar.');
     // ¡filtrar por MI id! los admin pueden ver todos los perfiles,
     // y sin este filtro la app tomaba el de otra persona.
-    const perf=await api('/rest/v1/perfiles?select=nombre,rol&id=eq.'+uid);
+    const perf=await api('/rest/v1/perfiles?select=nombre,rol,multibarra&id=eq.'+uid);
     if(!perf.length)throw new Error('Tu cuenta no tiene perfil asignado.');
     yo=perf[0];
     document.getElementById('login').classList.add('hide');
@@ -1613,6 +1629,7 @@ async function arrancar(){
     document.getElementById('firmaAut').innerHTML=`Se anota como autorizado por <b>${esc(yo.nombre)}</b>.`;
     // la boletería tiene que elegir su puesto (Arriba/Abajo) una vez por dispositivo
     if(yo.rol==='boleteria' && !miEstacion) setTimeout(elegirEstacion,300);
+    if(esMultibarra() && !miBarra) setTimeout(elegirBarra,300);
     evento=null; primerTick=true;
     await tick();
   }catch(e){ errLogin(e.message); cerrarSesion(); }
