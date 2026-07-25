@@ -1346,12 +1346,13 @@ function renderBarraCarga(){
   const nombres=Object.keys(por).sort((a,b)=>new Date(por[b][0].creado_en||0)-new Date(por[a][0].creado_en||0));
   el.innerHTML=nombres.map(n=>{
     const list=por[n], pend=list.filter(c=>!c.entregado).length;
+    const quienes=[...new Set(list.map(c=>c.autoriza).filter(Boolean))].join(' y ');
     const chips=list.slice(0,4).map(c=>{const col=colorTipo(c.tipo);
       return `<span class="chip" style="font-size:12px;padding:4px 10px;border-color:${col};color:${col}">${esc(c.tipo)}</span>`;}).join('')
       +(list.length>4?`<span class="chip" style="font-size:12px;padding:4px 10px">+${list.length-4}</span>`:'');
     return `<div class="pCard" data-nombre="${esc(n)}" onclick="abrirCargaPersona(this.dataset.nombre)">
       <div style="min-width:0"><div class="nombre">${esc(n)}</div>
-        <div class="meta">${list.length} consumo${list.length!==1?'s':''}${pend?` · ${pend} sin retirar`:' · todo entregado'}</div>
+        <div class="meta">${list.length} consumo${list.length!==1?'s':''}${pend?` · ${pend} sin retirar`:' · todo entregado'}${quienes?` · cargó <b style="color:var(--oroClaro)">${esc(quienes)}</b>`:''}</div>
         <div class="chips" style="margin-top:7px">${chips}</div></div>
       <div class="histFlecha">›</div></div>`;
   }).join('')||'<div class="cargando">Todavía no hay consumos cargados esta noche.</div>';
