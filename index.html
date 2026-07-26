@@ -1537,8 +1537,17 @@ function poolNombres(){
 }
 function candidatoPara(typed){
   const q=nrmc(typed); if(q.length<1) return null;
-  for(const c of poolNombres()){ if(nrmc(c).startsWith(q) && c.length>typed.length) return c; }
-  return null;
+  // Preferimos un nombre donde lo tipeado sea EXACTAMENTE una palabra completa
+  // (ej: "Giani" → "Giani Perotti"), por encima de uno más largo ("Gianina...").
+  // Así el espacio no fuerza el nombre largo cuando el corto ya es válido.
+  let exacto=null, prefijo=null;
+  for(const c of poolNombres()){
+    const cn=nrmc(c);
+    if(!cn.startsWith(q) || c.length<=typed.length) continue;
+    if(cn.length===q.length || cn[q.length]===' '){ if(!exacto)exacto=c; break; }
+    else if(!prefijo) prefijo=c;
+  }
+  return exacto||prefijo;
 }
 function crearPredictivo(el, esTA){
   const wrap=document.createElement('div'); wrap.className='predWrap';
