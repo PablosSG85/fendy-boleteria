@@ -565,17 +565,25 @@ function elegirEstacion(){
   }}));
   modal('¿En qué boletería estás?','Elegí tu puesto. Queda guardado en esta compu/celu; lo podés cambiar cuando quieras.','',btns);
 }
-// Multibarra: una sola cuenta que elige en qué barra está (por dispositivo).
+// Multipuesto: una sola cuenta que elige cualquier puesto (boletería o barra) por dispositivo.
 const BARRAS_LISTA=['VIP','Principal','Terraza','Entre Piso','Zebra'];
 let miBarra=localStorage.getItem('fendy_barra')||'';
-const esMultibarra=()=>!!yo&&yo.multibarra===true;
-function elegirBarra(){
-  const btns=BARRAS_LISTA.map(b=>({txt:ICO.copa+' '+b,tipo:'pri',fn:()=>{
-    miBarra=b; localStorage.setItem('fendy_barra',b); pintarQuien();
-    try{ renderBarra(); }catch(_){}
-    aviso('Barra '+b+' ✓','ok');
-  }}));
-  modal('¿En qué barra estás?','Elegí tu barra. Queda guardada en este dispositivo; la podés cambiar cuando quieras.','',btns);
+let miPuesto=localStorage.getItem('fendy_puesto')||'';   // 'bole' | 'barra'
+const esMultibarra=()=>!!yo&&yo.multibarra===true;        // flag backend: atribuye a la barra elegida
+const esMultipuesto=()=>!!yo&&yo.multipuesto===true;      // elige puesto: boletería o barra
+function elegirPuesto(){
+  const btns=[];
+  ESTACIONES_BOLE.forEach(e=>btns.push({txt:ICO.puerta+' Boletería · '+e,tipo:'sec',fn:()=>fijarPuesto('bole',e)}));
+  BARRAS_LISTA.forEach(b=>btns.push({txt:ICO.copa+' Barra · '+b,tipo:'sec',fn:()=>fijarPuesto('barra',b)}));
+  modal('¿En qué puesto estás?','Elegí dónde vas a trabajar esta noche. Queda guardado en este dispositivo; lo cambiás cuando quieras.','',btns);
+}
+function fijarPuesto(tipo,valor){
+  miPuesto=tipo; localStorage.setItem('fendy_puesto',tipo);
+  if(tipo==='bole'){ miEstacion=valor; localStorage.setItem('fendy_estacion',valor); }
+  else { miBarra=valor; localStorage.setItem('fendy_barra',valor); }
+  pintarQuien();
+  if(evento) irA(tipo==='bole'?'bole':'barra','controlar');
+  aviso((tipo==='bole'?'Boletería ':'Barra ')+valor+' ✓','ok');
 }
 const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
@@ -654,7 +662,7 @@ function salir(){
 function menu(){
   const b=[{txt:ICO.llave+' Cambiar mi contraseña',tipo:'sec',fn:pedirNuevaClave}];
   if(yo.rol==='boleteria')b.push({txt:ICO.puerta+' Cambiar boletería (Arriba/Abajo)',tipo:'sec',fn:elegirEstacion});
-  if(esMultibarra())b.push({txt:ICO.copa+' Cambiar barra',tipo:'sec',fn:elegirBarra});
+  if(esMultipuesto())b.push({txt:ICO.puerta+' Cambiar puesto (boletería / barra)',tipo:'sec',fn:elegirPuesto});
   if(esAdmin()){
     if(evento)b.push({txt:ICO.grafico+' Reporte / cerrar noche',tipo:'sec',fn:verReporte});
     b.push({txt:ICO.archivo+' Noches anteriores',tipo:'sec',fn:verHistorico});
@@ -1451,7 +1459,7 @@ function bPick(idx,delta){
 }
 async function confirmarBarra(){
   const ids=[...bSel]; if(!ids.length)return;
-  if(esMultibarra() && !miBarra){ cerrarFoco(); elegirBarra(); return; }
+  if(esMultibarra() && !miBarra){ cerrarFoco(); elegirPuesto(); return; }
   try{ await api('/rest/v1/rpc/entregar_consumos',{method:'POST',body:JSON.stringify({p_ids:ids,p_barra:miBarra})});
     cerrarFoco(); aviso('Entregado ✓','ok'); await sincronizar();
   }catch(e){ alert('No se pudo: '+e.message); }
@@ -1608,10 +1616,11 @@ crearPredictivo(document.getElementById('fNombres'), true);
 
 function pintarQuien(){
   cargarClientes();
-  const rol=esAdmin()?'admin':(yo.rol==='barra'?'barra':'boletería');
+  const rol=esAdmin()?'admin':esMultipuesto()?(miPuesto==='bole'?'boletería':miPuesto==='barra'?'barra':'puesto'):(yo.rol==='barra'?'barra':'boletería');
+  const puestoVal=miPuesto==='bole'?miEstacion:miPuesto==='barra'?miBarra:'';
   const est=(yo&&yo.rol==='boleteria'&&miEstacion)?` · <b style="color:var(--txt)">${esc(miEstacion)}</b>`
-    :(esMultibarra()&&miBarra)?` · <b style="color:var(--txt)">${esc(miBarra)}</b>`
-    :(esMultibarra())?` · <b style="color:var(--pago)">elegí barra</b>`:'';
+    :(esMultipuesto()&&puestoVal)?` · <b style="color:var(--txt)">${esc(puestoVal)}</b>`
+    :(esMultipuesto())?` · <b style="color:var(--pago)">elegí puesto</b>`:'';
   document.getElementById('quien').innerHTML=
     `${esc(yo.nombre)} <small>· ${rol}${est}</small><button onclick="menu()" title="Opciones">⋯</button>`;
 }
@@ -1629,7 +1638,7 @@ async function arrancar(){
     document.getElementById('firmaAut').innerHTML=`Se anota como autorizado por <b>${esc(yo.nombre)}</b>.`;
     // la boletería tiene que elegir su puesto (Arriba/Abajo) una vez por dispositivo
     if(yo.rol==='boleteria' && !miEstacion) setTimeout(elegirEstacion,300);
-    if(esMultibarra() && !miBarra) setTimeout(elegirBarra,300);
+    if(esMultipuesto() && !miPuesto) setTimeout(elegirPuesto,300);
     evento=null; primerTick=true;
     await tick();
   }catch(e){ errLogin(e.message); cerrarSesion(); }
@@ -1655,7 +1664,8 @@ function entrarModoNoche(){
   document.getElementById('tab-sinNoche').classList.add('hide');
   document.getElementById('evFecha').textContent='Evento: '+fechaCorta(evento.fecha);
   document.querySelector('nav').classList.toggle('hide', !esAdmin());   // el personal no ve la nav
-  if(yo.rol==='boleteria') irA('bole','controlar');
+  if(esMultipuesto()) irA(miPuesto==='bole'?'bole':'barra','controlar');
+  else if(yo.rol==='boleteria') irA('bole','controlar');
   else if(yo.rol==='barra') irA('barra','controlar');
   else irA('bole','cargar');
 }
@@ -1810,7 +1820,8 @@ function borrar(id){
 let dominio='bole', modo='cargar';
 function irA(dom, mod){
   if(!yo)return;
-  if(yo.rol==='boleteria'){ dominio='bole'; modo='controlar'; }
+  if(esMultipuesto()){ dominio=(miPuesto==='bole'?'bole':'barra'); modo='controlar'; }
+  else if(yo.rol==='boleteria'){ dominio='bole'; modo='controlar'; }
   else if(yo.rol==='barra'){ dominio='barra'; modo='controlar'; }
   else { if(dom)dominio=dom; if(mod)modo=mod; }
   const secc = dominio==='bole' ? (modo==='cargar'?'tab-carga':'tab-bole')
