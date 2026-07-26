@@ -1507,7 +1507,9 @@ function sugerirDatalist(){
 }
 // boleteria: chips de sugerencia debajo del cuadro de nombres (linea donde esta el cursor)
 function sugerirBole(){
-  const ta=document.getElementById('fNombres'), box=document.getElementById('fSug'); if(!ta||!box)return;
+  // PREDICTOR DESACTIVADO (26/07/2026): a pedido de Pablo, se rediseña más adelante.
+  const box=document.getElementById('fSug'); if(box)box.innerHTML=''; return;
+  const ta=document.getElementById('fNombres'); if(!ta||!box)return;
   if(!ta.value.trim()){ box.innerHTML=''; return; }
   // si hay prediccion fantasma de prefijo, no duplicar con chips
   { const v=ta.value, pos=ta.selectionStart??v.length;
@@ -1550,6 +1552,9 @@ function candidatoPara(typed){
   return exacto||prefijo;
 }
 function crearPredictivo(el, esTA){
+  // PREDICTOR DESACTIVADO (26/07/2026): el fantasma forzaba nombres largos (Giani→Gianina).
+  // A pedido de Pablo queda el campo 100% manual; se rediseña más adelante.
+  return;
   const wrap=document.createElement('div'); wrap.className='predWrap';
   el.parentNode.insertBefore(wrap, el); wrap.appendChild(el);
   const g=document.createElement('div'); g.className='predGhost'; wrap.appendChild(g);
