@@ -666,10 +666,120 @@ function menu(){
   if(esAdmin()){
     if(evento)b.push({txt:ICO.grafico+' Reporte / cerrar noche',tipo:'sec',fn:verReporte});
     b.push({txt:ICO.archivo+' Noches anteriores',tipo:'sec',fn:verHistorico});
+    b.push({txt:ICO.grafico+' Exportar datos (Excel)',tipo:'sec',fn:exportarDatos});
   }
   b.push({txt:'⏻ Cerrar sesión',tipo:'sec',fn:salir});
   b.push({txt:'Cerrar',tipo:'gho'});
   modal(yo.nombre,ses.email,'',b);
+}
+/* ================= EXPORTAR DATOS A EXCEL (.xlsx autocontenido) ================= */
+const _crcTab=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}return t;})();
+function _crc32(u8){let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=_crcTab[(c^u8[i])&0xFF]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
+function _zipStore(files){
+  const enc=new TextEncoder(), chunks=[], central=[]; let offset=0;
+  const u16=n=>[n&255,(n>>8)&255], u32=n=>[n&255,(n>>8)&255,(n>>16)&255,(n>>24)&255];
+  for(const f of files){
+    const name=enc.encode(f.name), data=f.data, crc=_crc32(data);
+    const local=[].concat([0x50,0x4b,0x03,0x04],u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0));
+    chunks.push(new Uint8Array(local),name,data);
+    const cen=[].concat([0x50,0x4b,0x01,0x02],u16(20),u16(20),u16(0),u16(0),u16(0),u16(0),u32(crc),u32(data.length),u32(data.length),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset));
+    central.push({head:new Uint8Array(cen),name});
+    offset+=local.length+name.length+data.length;
+  }
+  let cenSize=0; const cenChunks=[];
+  for(const c of central){ cenChunks.push(c.head,c.name); cenSize+=c.head.length+c.name.length; }
+  const end=[].concat([0x50,0x4b,0x05,0x06],u16(0),u16(0),u16(central.length),u16(central.length),u32(cenSize),u32(offset),u16(0));
+  return new Blob([...chunks,...cenChunks,new Uint8Array(end)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function _xe(s){return String(s==null?'':s).replace(/[<>&"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]));}
+function _colL(n){let s='';n++;while(n>0){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=(n-r-1)/26;}return s;}
+function _cel(ref,v,st){
+  const s=st?` s="${st}"`:'';
+  if(typeof v==='number'&&isFinite(v)) return `<c r="${ref}"${s}><v>${v}</v></c>`;
+  return `<c r="${ref}"${s} t="inlineStr"><is><t xml:space="preserve">${_xe(v)}</t></is></c>`;
+}
+function _hojaXml(h){
+  const nc=h.headers.length;
+  let sd='<row r="1">'+h.headers.map((t,i)=>_cel(_colL(i)+'1',t,1)).join('')+'</row>';
+  h.rows.forEach((row,ri)=>{ const r=ri+2;
+    sd+=`<row r="${r}">`+row.map((v,ci)=>_cel(_colL(ci)+r, v, h.money&&h.money.has(ci)?2:0)).join('')+'</row>'; });
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetData>${sd}</sheetData><autoFilter ref="A1:${_colL(nc-1)}1"/></worksheet>`;
+}
+function construirXlsx(hojas){
+  const enc=new TextEncoder(), U=s=>enc.encode(s);
+  const ct=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${hojas.map((h,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`;
+  const rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const wb=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${hojas.map((h,i)=>`<sheet name="${_xe(h.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets></workbook>`;
+  const wbRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${hojas.map((h,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${hojas.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;$&quot;#,##0"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFF5F1E8"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1C1723"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const files=[
+    {name:'[Content_Types].xml',data:U(ct)},
+    {name:'_rels/.rels',data:U(rels)},
+    {name:'xl/workbook.xml',data:U(wb)},
+    {name:'xl/_rels/workbook.xml.rels',data:U(wbRels)},
+    {name:'xl/styles.xml',data:U(styles)},
+  ];
+  hojas.forEach((h,i)=>files.push({name:`xl/worksheets/sheet${i+1}.xml`,data:U(_hojaXml(h))}));
+  return _zipStore(files);
+}
+async function exportarDatos(){
+  aviso('Cargando noches…','ok');
+  try{
+    const lista=await api('/rest/v1/rpc/historico_noches',{method:'POST',body:'{}'});
+    aviso('');
+    if(!lista.length)return alert('Todavía no hay noches para exportar.');
+    const body=`<div style="max-height:46vh;overflow:auto">`+lista.map(n=>`
+      <label style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid rgba(201,150,43,.16)">
+        <input type="checkbox" class="expN" value="${n.id}" data-fecha="${esc(fechaLarga(n.fecha))}" checked style="width:20px;height:20px;accent-color:var(--oro)">
+        <span><b style="text-transform:capitalize">${fechaLarga(n.fecha)}</b><br><small style="color:var(--dim)">${n.personas} anotados · ${n.ingresaron} entraron</small></span>
+      </label>`).join('')+`</div>`;
+    modal('Exportar a Excel','Tildá las noches. Si elegís varias, salen todas en un mismo Excel con filtro por fecha.',body,[
+      {txt:ICO.grafico+' Descargar Excel',tipo:'pri',mantener:true,accion:generarExport},
+      {txt:'Cerrar',tipo:'gho'}]);
+  }catch(e){ aviso(''); alert('No se pudo: '+e.message); }
+}
+async function generarExport(){
+  const chk=[...document.querySelectorAll('.expN:checked')];
+  if(!chk.length)return alert('Elegí al menos una noche.');
+  const ids=chk.map(c=>c.value), fmap={}; chk.forEach(c=>fmap[c.value]=c.dataset.fecha);
+  aviso('Generando Excel…','ok');
+  try{
+    const cols='nombre,grupo,autoriza,nota,free,sinrec,ext,pago,precio,i_free,i_sinrec,i_ext,i_pago,creado_en,evento_id';
+    const data=await api(`/rest/v1/anotados?select=${cols}&evento_id=in.(${ids.join(',')})&order=evento_id,autoriza,nombre`);
+    const nn=x=>Number(x)||0, hora=t=>{try{return new Date(t).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(_){return '';}};
+    const det=[]; const socio={}; const noche={};
+    data.forEach(a=>{
+      const nf=fmap[a.evento_id]||'', ta=nn(a.free)+nn(a.sinrec)+nn(a.ext)+nn(a.pago),
+            te=nn(a.i_free)+nn(a.i_sinrec)+nn(a.i_ext)+nn(a.i_pago), rec=nn(a.i_pago)*nn(a.precio);
+      det.push([nf,a.nombre||'',a.grupo||'',a.autoriza||'',nn(a.free),nn(a.i_free),nn(a.sinrec),nn(a.i_sinrec),
+        nn(a.ext),nn(a.i_ext),nn(a.pago),nn(a.i_pago),nn(a.precio),ta,te,ta-te,rec,hora(a.creado_en)]);
+      const ks=nf+'||'+(a.autoriza||'—'); const s=socio[ks]||(socio[ks]={nf,so:a.autoriza||'—',f:0,a:0,e:0,fr:0,r:0});
+      s.f++; s.a+=ta; s.e+=te; s.fr+=nn(a.i_free); s.r+=rec;
+      const d=noche[nf]||(noche[nf]={f:0,a:0,e:0,r:0}); d.f++; d.a+=ta; d.e+=te; d.r+=rec;
+    });
+    const hojas=[
+      {name:'Detalle', money:new Set([12,16]),
+       headers:['Noche','Nombre','Grupo / Mesa','Socio','Free anot.','Free entró','S/Rec anot.','S/Rec entró','Ext anot.','Ext entró','Pagan anot.','Pagan entró','Precio','Total anotados','Total entraron','No vinieron','Recaudado','Cargado'],
+       rows:det},
+      {name:'Por socio', money:new Set([6]),
+       headers:['Noche','Socio','Fichas','Anotados','Entraron','Free entró','Recaudado'],
+       rows:Object.values(socio).sort((a,b)=>a.nf.localeCompare(b.nf)||a.so.localeCompare(b.so)).map(s=>[s.nf,s.so,s.f,s.a,s.e,s.fr,s.r])},
+      {name:'Resumen por noche', money:new Set([6]),
+       headers:['Noche','Fichas','Personas anotadas','Entraron','No vinieron','% asist.','Recaudado en puerta'],
+       rows:Object.entries(noche).map(([nf,d])=>[nf,d.f,d.a,d.e,d.a-d.e,(d.a?Math.round(100*d.e/d.a):0)+'%',d.r])},
+    ];
+    const blob=construirXlsx(hojas);
+    const url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download=`FENDY - Ingresos (${chk.length} noche${chk.length>1?'s':''}).xlsx`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000);
+    aviso('Excel generado ✓','ok'); cerrarModal();
+  }catch(e){ aviso(''); alert('No se pudo generar: '+e.message); }
 }
 function pedirNuevaClave(){
   modal('Cambiar contraseña','Mínimo 6 caracteres.',
