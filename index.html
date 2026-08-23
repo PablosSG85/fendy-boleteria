@@ -888,6 +888,15 @@ function renderReporte(rep,opts){
   if(!rep.atribucion_confiable)
     h+=`<div class="repWarn">${ICO.alerta} <b>Los datos por socio de esta noche no son confiables</b> por el error de identidad que ya corregimos. Los totales de abajo sí son correctos. A partir de la próxima noche, todo lo de cada socio va a ser exacto.</div>`;
 
+  // Los botones de accion van tambien ARRIBA: el reporte es largo y tener que
+  // bajar hasta el fondo para compartir o cerrar la noche era un fastidio
+  // (pedido de Pablo, 22/08/2026). Abajo se dejan igual, para el que lee todo.
+  h+=`<div class="repBtns" style="margin:0 0 6px">
+      <button class="mBtn sec" onclick="enviarWhatsapp()">${ICO.enviar} Enviar por WhatsApp</button>
+      <button class="mBtn gho" onclick="copiarReporte()">${ICO.copiar} Copiar el texto</button>
+      ${permitirCerrar?`<button class="mBtn pri" onclick="confirmarCerrar()">${ICO.bandera} Finalizar y cerrar la noche</button>`:''}
+    </div>`;
+
   h+=`<div class="repSec">Resumen</div>
     <div class="repTiles">
       <div class="repTile"><b>${t.personas}</b><span>anotados</span></div>
@@ -940,13 +949,14 @@ function renderReporte(rep,opts){
         <div class="repTile"><b style="color:${bt.sin_retirar?'var(--pago)':'var(--dim)'}">${bt.sin_retirar}</b><span>sin retirar</span></div>
         <div class="repTile"><b style="color:var(--free)">${bt.regalados}</b><span>sin cargo</span></div>
         <div class="repTile"><b style="color:var(--ext)">${bt.upgrades}</b><span>upgrades</span></div>
+        <div class="repTile"><b style="color:var(--ext)">${bt.extendidos||0}</b><span>extendidos</span></div>
         <div class="repTile big"><b class="dinero" style="color:var(--pago)">${money(bt.facturado)}</b><span>facturado en barra</span></div>
       </div>`;
     h+=`<div class="repSec">Por artículo</div>
       <div style="overflow-x:auto"><table class="repTable">
-        <thead><tr><th>Artículo</th><th>Cant</th><th>Entreg.</th><th>Sin cargo</th><th>Upgr.</th><th>Facturado</th></tr></thead>
+        <thead><tr><th>Artículo</th><th>Cant</th><th>Entreg.</th><th>Sin cargo</th><th>Upgr.</th><th>Extend.</th><th>Facturado</th></tr></thead>
         <tbody>${(B.por_articulo||[]).map(x=>{const col=colorTipo(x.tipo);
-          return `<tr><td><span class="badge" style="border-color:${col};color:${col};background:${col}22">${esc(x.tipo)}</span></td><td>${x.cant}</td><td>${x.entregados}</td><td>${x.regalados}</td><td>${x.upgrades}</td><td class="dinero">${money(x.facturado)}</td></tr>`;}).join('')}</tbody></table></div>`;
+          return `<tr><td><span class="badge" style="border-color:${col};color:${col};background:${col}22">${esc(x.tipo)}</span></td><td>${x.cant}</td><td>${x.entregados}</td><td>${x.regalados}</td><td>${x.upgrades}</td><td>${x.extendidos||0}</td><td class="dinero">${money(x.facturado)}</td></tr>`;}).join('')}</tbody></table></div>`;
     const pb=B.por_barra||[];
     if(pb.length)
       h+=`<div class="repSec">Entregas por barra</div>
@@ -1279,6 +1289,8 @@ const PRECIOS_SUGERIDOS={
 };
 let bTipo='', bPrecio=null, bCambio='', bCantN=1, bChipsListos=false, carrito=[], bPrecioSug=false;
 let bUpgradeModo=false;   // true = ya toco 🔄 y falta elegir el trago NUEVO
+let bExtendido=false;     // el consumo que se esta cargando es una EXTENSION
+let bExtModo=false;       // la grilla esta mostrando las 3 cosas que se extienden
 
 /* ---------- iconos vectoriales (nada de emojis en la interfaz) ---------- */
 const ICO={
@@ -1307,11 +1319,43 @@ function colorTipo(t){
   const pal=['#C490A8','#8FA8C4','#AC96C4','#93BF9C','#C4B478','#C48D95','#84B4BF','#BC93C4','#9FB4CF'];
   let h=0; for(let i=0;i<u.length;i++)h=(h*31+u.charCodeAt(i))>>>0; return pal[h%pal.length];
 }
+/* ---------- EXTENDER ----------
+   Extender = respetarle un combo o una consumicion que NO le correspondia
+   (vencido, de otra fecha, cortesia). Es el equivalente en barra del
+   "EXTENDER QR" de boleteria: no es un regalo comun, en el reporte se cuenta
+   aparte para poder controlarlo.
+   Va como UN SOLO chip que al tocarlo se abre en las tres opciones, en vez de
+   tres productos sueltos, para no ocupar lugar en la grilla (pedido de Pablo). */
+const EXTENDIBLES=['COMBO RRPP','COMBO CUMPLEA\u00d1OS','CONSUMICI\u00d3N'];
+const ESTILO_EXT='border-color:var(--ext);color:var(--ext)';
+function bRenderTipos(){
+  const cont=document.getElementById('bTipos'); if(!cont)return;
+  if(bExtModo){
+    cont.innerHTML=EXTENDIBLES.map(t=>
+      `<button type="button" class="chip ext" data-tipo="${t}" style="${ESTILO_EXT}" onclick="bPickExt(this)">${t}</button>`).join('')
+      +`<button type="button" class="chip" onclick="bExtender()">\u2190 Volver</button>`;
+    return;
+  }
+  cont.innerHTML=BEBIDAS.map(t=>{const c=colorTipo(t);
+    return `<button type="button" class="chip" data-tipo="${t}" style="border-color:${c};color:${c}" onclick="bPickTipo(this)">${t}</button>`;}).join('')
+    +`<button type="button" class="chip ext" id="bChipExt" style="${ESTILO_EXT}" onclick="bExtender()">EXTENDER</button>`
+    +`<button type="button" class="chip" onclick="bOtroTipo()">Otro\u2026</button>`;
+  if(bExtendido){ const ce=document.getElementById('bChipExt'); if(ce)ce.classList.add('sel'); }
+}
+function bExtender(){
+  bExtModo=!bExtModo;
+  if(bExtModo){ bTipo=''; bPrecio=null; bCambio=''; bUpgradeModo=false; bExtendido=false; bPrecioSug=false; }
+  bRenderTipos(); actualizarPrecioSec(); bResumen();
+}
+function bPickExt(el){
+  bExtModo=false; bExtendido=true;
+  bTipo=el.dataset.tipo; bPrecio=0; bCambio=''; bUpgradeModo=false; bPrecioSug=false;
+  bOtroCerrar(); bRenderTipos(); actualizarPrecioSec(); bResumen();
+  aviso('Se extiende: '+bTipo,'ok');
+}
 function bInit(){
   if(bChipsListos)return; bChipsListos=true;
-  document.getElementById('bTipos').innerHTML=BEBIDAS.map(t=>{const c=colorTipo(t);
-    return `<button type="button" class="chip" data-tipo="${t}" style="border-color:${c};color:${c}" onclick="bPickTipo(this)">${t}</button>`;}).join('')
-    +`<button type="button" class="chip" onclick="bOtroTipo()">Otro…</button>`;
+  bRenderTipos();
   document.getElementById('bPrecios').innerHTML=`<button type="button" class="chip" id="bChipSug" style="display:none;font-weight:800" onclick="bPickSug()"></button>`
     +`<button type="button" class="chip free" onclick="bPickPrecio(this,0)">Sin cargo</button>`
     +`<button type="button" class="chip" onclick="bOtroPrecio()">Otro…</button>`
@@ -1323,6 +1367,7 @@ function bSetTipo(t, el){
   document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel'));
   if(el)el.classList.add('sel');
   bTipo=t;
+  bExtendido=false; bExtModo=false;   // elegir un trago normal cancela la extension
   bOtroCerrar();
   if(bUpgradeModo){
     // segundo toque del upgrade: este es el trago NUEVO; el viejo quedo en bCambio
@@ -1382,7 +1427,7 @@ function actualizarPrecioSec(){
   const sec=document.getElementById('bPrecioSec'); if(!sec)return;
   sec.style.display=(bTipo||bUpgradeModo||bCambio)?'':'none';
   const ch=document.getElementById('bChipCambio');
-  if(ch) ch.style.display=(bUpgradeModo||bCambio||puedeUpgrade(bTipo))?'':'none';
+  if(ch) ch.style.display=(!bExtendido&&(bUpgradeModo||bCambio||puedeUpgrade(bTipo)))?'':'none';
 }
 function bPickSug(){ const p=PRECIOS_SUGERIDOS[bTipo]; if(p==null)return; document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); document.getElementById('bChipSug').classList.add('sel'); bPrecio=p; bCambio=''; bUpgradeModo=false; bPrecioSug=true; bResumen(); }
 function bPickPrecio(el,p){ document.querySelectorAll('#bPrecios .chip').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); bPrecio=p; bCambio=''; bUpgradeModo=false; bPrecioSug=false; bResumen(); }
@@ -1410,7 +1455,8 @@ function bResumen(){
   if(!bTipo){ el.innerHTML='<span style="color:var(--dim);font-weight:600;font-size:15px">Elegí el trago…</span>'; return; }
   const col=colorTipo(bTipo);
   let det='';
-  if(bCambio) det=`<span style="color:var(--ext)"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> upgrade${bCambio&&bCambio!=='—'?' de '+esc(bCambio):''}</span>`;
+  if(bExtendido) det=`<span style="color:var(--ext)">EXTENDIDO \u00b7 sin cargo</span>`;
+  else if(bCambio) det=`<span style="color:var(--ext)"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> upgrade${bCambio&&bCambio!=='—'?' de '+esc(bCambio):''}</span>`;
   else if(bPrecio!=null) det= bPrecio ? `<span style="color:var(--pago)">${money(bPrecio)}${bCantN>1?' c/u':''}</span>` : `<span style="color:var(--free)">sin cargo</span>`;
   el.innerHTML=`<span style="color:${col}">${bCantN>1?bCantN+'× ':''}${esc(bTipo)}</span>${det?'<br>'+det:''}`;
 }
@@ -1418,8 +1464,9 @@ function bAgregar(){
   if(bUpgradeModo)return alert('Falta el trago NUEVO del upgrade: tocalo arriba.');
   if(!bTipo)return alert('Elegí qué consume.');
   if(bPrecio==null && !bCambio)return alert('Elegí el precio, sin cargo, o upgrade.');
-  carrito.push({tipo:bTipo, precio:bCambio?0:bPrecio, cambio:bCambio, cant:bCantN});
-  bTipo=''; bPrecio=null; bCambio=''; bCantN=1; bPrecioSug=false; bUpgradeModo=false; bOtroCerrar();
+  carrito.push({tipo:bTipo, precio:bCambio?0:bPrecio, cambio:bCambio, cant:bCantN, extendido:bExtendido});
+  bTipo=''; bPrecio=null; bCambio=''; bCantN=1; bPrecioSug=false; bUpgradeModo=false; bExtendido=false; bExtModo=false; bOtroCerrar();
+  bRenderTipos();
   document.getElementById('bCant').textContent='1';
   document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
   const cs=document.getElementById('bChipSug'); if(cs)cs.style.display='none';
@@ -1431,8 +1478,8 @@ function renderCarrito(){
   const el=document.getElementById('bCarrito'); if(!el)return;
   if(!carrito.length){ el.innerHTML='<div class="cargando" style="padding:14px 0">Elegí abajo qué se lleva y tocá “Agregar al pedido”</div>'; return; }
   el.innerHTML=carrito.map((it,i)=>{const col=colorTipo(it.tipo);
-    const dCol = it.cambio ? 'var(--ext)' : it.precio ? 'var(--pago)' : 'var(--free)';
-    const detalle = it.cambio ? `<svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> UPGRADE${it.cambio!=='—'?' de '+esc(it.cambio):''}`
+    const dCol = (it.extendido||it.cambio) ? 'var(--ext)' : it.precio ? 'var(--pago)' : 'var(--free)';
+    const detalle = it.extendido ? 'EXTENDIDO' : it.cambio ? `<svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> UPGRADE${it.cambio!=='—'?' de '+esc(it.cambio):''}`
       : it.precio ? money(it.precio)+(it.cant>1?' c/u · total '+money(it.precio*it.cant):'') : 'SIN CARGO';
     return `<div class="card" style="margin-bottom:8px"><div class="cardTop">
       <div><div class="nombre" style="font-size:19px;font-weight:560;letter-spacing:-.2px">${it.cant>1?it.cant+'× ':''}<span style="color:${col}">${esc(it.tipo)}</span></div>
@@ -1453,12 +1500,13 @@ async function cargarBebida(){
   if(bTipo && (bPrecio!=null || bCambio)) bAgregar();
   if(!carrito.length)return alert('Agregá al menos un consumo al pedido.');
   const filas=[];
-  carrito.forEach(it=>{ for(let k=0;k<it.cant;k++) filas.push({evento_id:evento.id,nombre:n,tipo:it.tipo,precio:it.cambio?0:it.precio,cambio:it.cambio}); });
+  carrito.forEach(it=>{ for(let k=0;k<it.cant;k++) filas.push({evento_id:evento.id,nombre:n,tipo:it.tipo,precio:it.cambio?0:it.precio,cambio:it.cambio,extendido:!!it.extendido}); });
   const cant=filas.length;
   const btn=document.getElementById('bGuardar'); btn.disabled=true; const txt=btn.textContent; btn.textContent='CARGANDO…';
   try{
     await api('/rest/v1/consumos',{method:'POST',body:JSON.stringify(filas)});
     document.getElementById('bNombre').value=''; carrito=[]; bTipo=''; bPrecio=null; bCambio=''; bCantN=1; bPrecioSug=false;
+    bExtendido=false; bExtModo=false; bRenderTipos();
     document.getElementById('bCant').textContent='1';
     document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
     const cs=document.getElementById('bChipSug'); if(cs)cs.style.display='none';
