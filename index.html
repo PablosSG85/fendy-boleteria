@@ -962,13 +962,14 @@ function renderReporte(rep,opts){
       h+=`<div class="repSec">Entregas por barra</div>
         <div style="overflow-x:auto"><table class="repTable">
           <thead><tr><th>Barra</th><th>Entregas</th><th>Valor</th></tr></thead>
-          <tbody>${pb.map(x=>`<tr><td><b>${ICO.copa} ${esc(x.barra)}</b></td><td>${x.entregas}</td><td class="dinero">${money(x.valor)}</td></tr>`).join('')}</tbody></table></div>`;
+          <tbody>${pb.map(x=>{const esB = x.es_barra!==false;
+            return `<tr><td><b>${esB?ICO.copa:ICO.persona||''} ${esc(x.barra)}</b>${esB?'':' <small style="color:var(--dim)">· entregó desde su cuenta, no es una barra</small>'}</td><td>${x.entregas}</td><td class="dinero">${money(x.valor)}</td></tr>`;}).join('')}</tbody></table></div>`;
     const qc=B.quien_cargo||[];
     if(qc.length)
-      h+=`<div class="repSec">Quién cargó consumos${rep.atribucion_confiable?'':''}</div>
+      h+=`<div class="repSec">Barra por socio</div>
         <div style="overflow-x:auto"><table class="repTable">
-          <thead><tr><th>Socio</th><th>Items</th><th>Sin cargo</th><th>Facturado</th></tr></thead>
-          <tbody>${qc.map(x=>`<tr><td><b>${esc(x.socio||'—')}</b></td><td>${x.items}</td><td>${x.regalados}</td><td class="dinero">${money(x.facturado)}</td></tr>`).join('')}</tbody></table></div>`;
+          <thead><tr><th>Socio</th><th>Cargó</th><th>Entreg.</th><th>Sin cargo</th><th>Upgr.</th><th>Extend.</th><th>Facturado</th></tr></thead>
+          <tbody>${qc.map(x=>`<tr><td><b>${esc(x.socio||'—')}</b></td><td>${x.items}</td><td>${x.entregados||0}</td><td>${x.regalados}</td><td>${x.upgrades||0}</td><td>${x.extendidos||0}</td><td class="dinero">${money(x.facturado)}</td></tr>`).join('')}</tbody></table></div>`;
     const sr=B.sin_retirar||[];
     h+=`<div class="repSec">Consumos sin retirar (${sr.length})</div>`;
     h+= sr.length ? sr.map(x=>`<div class="repNo"><span>${esc(x.nombre)}</span><small>${esc(x.tipo)}${x.cambio?' · upgrade de '+esc(x.cambio):(x.precio?' · '+money(x.precio):' · sin cargo')}</small></div>`).join('')
@@ -1035,7 +1036,13 @@ function reporteTexto(rep){
     L.push(`🍸 BARRA: ${bt.items} consumos · ${bt.entregados} entregados · ${bt.sin_retirar} sin retirar`);
     L.push(`💰 Facturado barra: ${money(bt.facturado)} · 🎁 Sin cargo: ${bt.regalados} · 🔄 Upgrades: ${bt.upgrades}`);
     (B.por_articulo||[]).forEach(x=>L.push(`• ${x.tipo}: ${x.cant}${x.facturado?' ('+money(x.facturado)+')':' (sin cargo)'}`));
-    (B.por_barra||[]).forEach(x=>L.push(`🍸 ${x.barra}: ${x.entregas} entregas`));
+    (B.por_barra||[]).forEach(x=>L.push(`🍸 ${x.barra}: ${x.entregas} entregas${x.es_barra===false?' (desde su cuenta, no es una barra)':''}`));
+    const qcT=B.quien_cargo||[];
+    if(qcT.length){
+      L.push('');
+      L.push('🍸 BARRA POR SOCIO');
+      qcT.forEach(x=>L.push(`• ${x.socio||'—'}: ${x.items} cargados · ${x.entregados||0} entregados · ${x.regalados} sin cargo · ${money(x.facturado)}`));
+    }
   }
   return L.join('\n');
 }
