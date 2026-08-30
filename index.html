@@ -1594,24 +1594,31 @@ function borrarPedido(nom){
      {txt:'Cancelar',tipo:'gho'}]);
 }
 /* Borra los consumos indicados. Va de a lotes de 40 para no armar una URL gigante
-   cuando el pedido es largo. Si algo falla a mitad, sincroniza igual: la lista
-   que queda en pantalla es siempre la del servidor, nunca una suposicion. */
+   cuando el pedido es largo.
+   Cuantos se borraron lo dice el propio DELETE (Prefer: return=representation
+   hace que el server conteste con las filas que borro). No alcanza con mirar la
+   lista despues de sincronizar(): si el tick de cada 4s ya estaba pidiendo datos,
+   sincronizar() vuelve sin hacer nada y estariamos cantando un ✓ sin haber
+   verificado nada. Si el server no devolviera las filas, no inventamos un
+   numero: se confia en el OK, igual que hacia el borrado de a uno de siempre. */
 async function eliminarConsumos(ids,nom){
   if(!esAdmin()||!ids.length)return;
   aviso('Borrando…','ok');
+  let borrados=0, contadas=true;
   try{
     for(let i=0;i<ids.length;i+=40){
       const lote=ids.slice(i,i+40).map(x=>encodeURIComponent(x)).join(',');
-      await api('/rest/v1/consumos?id=in.('+lote+')',{method:'DELETE'});
+      const r=await api('/rest/v1/consumos?id=in.('+lote+')',
+        {method:'DELETE',headers:{Prefer:'return=representation'}});
+      if(Array.isArray(r))borrados+=r.length; else contadas=false;
     }
   }catch(e){ aviso('No se pudo borrar: '+e.message); await sincronizar(); return; }
   const fuera=new Set(ids);
   consumos=consumos.filter(c=>!fuera.has(c.id));
   renderBarraCarga(); renderBarra(); bHint();
   await sincronizar();
-  // sincronizar() vuelve a traer la lista del server: si algo no se borro de verdad, reaparece
-  const quedan=consumos.filter(c=>fuera.has(c.id)).length;
-  if(quedan)aviso(`Quedaron ${quedan} sin borrar — probá de nuevo`);
+  // el cartel va al final: sincronizar(), cuando corre bien, limpia el que haya
+  if(contadas && borrados<ids.length) aviso(`Se borraron ${borrados} de ${ids.length} — revisá la lista`);
   else aviso(ids.length>1?`Pedido de ${nom} borrado (${ids.length}) ✓`:'Borrado ✓','ok');
 }
 /* --- barra: control (entregar) --- */
