@@ -51,8 +51,10 @@ Todo cambio entra por **Pull Request** aprobado por un administrador (Pablo). La
 | Archivo | Qué es |
 |---|---|
 | `index.html` | Toda la app (frontend). Único archivo que normalmente se edita. |
-| `README.md` | Descripción y link a producción. |
+| `README.md` | Descripción, esquema y pasos de backup/migración. |
 | `CONTRIBUTING.md` | Este instructivo. |
+| `supabase/backup_pre_trazabilidad.sql` | Copia de las tablas (correr a mano ANTES de migrar). |
+| `supabase/migrations/*.sql` | Cambios de schema. Los aplica un admin en el SQL Editor, nunca desde `main`. |
 
 El contexto completo del proyecto (decisiones, backend, cuentas, historial) está en el repo **privado** `PablosSG85/fendy-boleteria-docs` — pedí acceso si no lo tenés.
 
