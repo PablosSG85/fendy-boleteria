@@ -362,6 +362,26 @@
     #tab-bole .totBox b{font-size:18px;}
     #tab-bole .totBox span{font-size:10px;}
   }
+
+  /* ===== TRAZABILIDAD: filtro de eventos, anulados, auditor ===== */
+  .filtroBar{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:4px 0 12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;}
+  .filtroBar .fCampo{flex:1;min-width:120px;}
+  .filtroBar .fCampo.corto{flex:0 0 auto;min-width:0;}
+  .filtroBar label{margin:0 0 4px;font-size:10px;}
+  .filtroBar select{
+    width:100%; background:var(--card2); border:1px solid var(--line); border-radius:12px; color:var(--txt);
+    font-size:14px; padding:9px 10px; outline:none; font-family:inherit;}
+  .filtroBar select:focus{border-color:var(--oro);}
+  .filtroBar input[type=date]{font-size:14px;padding:8px 10px;}
+  .filtroChk{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px 12px;cursor:pointer;user-select:none;}
+  .filtroChk input{width:16px;height:16px;accent-color:var(--oro);}
+  .filtroChk span{font-size:12px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;}
+  .fBtns{display:flex;gap:6px;flex-wrap:wrap;}
+  .fBtn{background:var(--card2);border:1px solid var(--line);color:var(--txt);font-size:12px;font-weight:700;padding:9px 12px;border-radius:12px;cursor:pointer;}
+  .card.anulado,.pCard.anulado,.repNo.anulado{opacity:.62;outline:1px dashed var(--accent);}
+  .badge.b-anulado{background:#2b0b14;color:#ff9db4;border:1px solid var(--accent);}
+  .auditorBanner{background:#1e1633;border:1px solid var(--ext);color:#d5c8f5;font-size:13px;padding:8px 12px;border-radius:12px;margin-bottom:10px;}
+  textarea.motivo{min-height:64px;font-size:15px;}
 </style>
 </head>
 <body>
@@ -427,6 +447,28 @@
     <button id="mControlar" class="modoBtn" onclick="irA(null,'controlar')"><svg class="ic" viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/><circle cx="12" cy="12" r="3"/></svg> Controlar</button>
   </div>
 
+  <div id="auditorBanner" class="auditorBanner hide">Modo auditor · solo lectura. Podés ver y exportar todo; no se puede cargar ni modificar.</div>
+
+  <div id="filtroBar" class="filtroBar hide">
+    <div class="fCampo">
+      <label>Evento</label>
+      <select id="selEvento"></select>
+    </div>
+    <div class="fCampo">
+      <label>Desde</label>
+      <input type="date" id="filtroDesde" onchange="aplicarRangoFechas()">
+    </div>
+    <div class="fCampo">
+      <label>Hasta</label>
+      <input type="date" id="filtroHasta" onchange="aplicarRangoFechas()">
+    </div>
+    <label class="filtroChk corto"><input type="checkbox" id="chkAnulados" onchange="toggleAnulados()"><span>ver anulados</span></label>
+    <div class="fBtns">
+      <button type="button" class="fBtn" onclick="verReporte()">Resumen</button>
+      <button type="button" class="fBtn" id="btnExportFiltro" onclick="exportarDatos()">Excel / CSV</button>
+    </div>
+  </div>
+
   <!-- ================= SIN NOCHE ================= -->
   <section id="tab-sinNoche" class="hide"></section>
 
@@ -444,14 +486,15 @@
     <label>Condición</label>
     <div class="chips" id="fTipos">
       <button type="button" class="chip free" data-t="free">FREE</button>
+      <button type="button" class="chip sinrec" data-t="sinrec">DESCUENTO</button>
       <button type="button" class="chip ext" data-t="ext">EXTENDER QR</button>
-      <button type="button" class="chip pago" data-t="pago">PAGAN</button>
+      <button type="button" class="chip pago" data-t="pago">PAGA</button>
     </div>
 
     <div class="grid2">
       <div id="wrapFree" class="hide"><label style="color:var(--free)">Cuántos free</label>
         <div class="stepRow"><button class="stepBtn" onclick="step('qFree',-1)">−</button><div class="num" id="qFree">1</div><button class="stepBtn" onclick="step('qFree',1)">+</button></div></div>
-      <div id="wrapSinrec" class="hide"><label style="color:var(--sinrec)">Cuántos sin recargo</label>
+      <div id="wrapSinrec" class="hide"><label style="color:var(--sinrec)">Cuántos con descuento</label>
         <div class="stepRow"><button class="stepBtn" onclick="step('qSinrec',-1)">−</button><div class="num" id="qSinrec">1</div><button class="stepBtn" onclick="step('qSinrec',1)">+</button></div></div>
       <div id="wrapExt" class="hide"><label style="color:var(--ext)">Cuántos QR extender</label>
         <div class="stepRow"><button class="stepBtn" onclick="step('qExt',-1)">−</button><div class="num" id="qExt">1</div><button class="stepBtn" onclick="step('qExt',1)">+</button></div></div>
@@ -471,6 +514,11 @@
 
     <label>Nota (opcional)</label>
     <input type="text" id="fNota" placeholder="Ej: chicas free / hombres pagan · mesa" autocomplete="off">
+
+    <div id="wrapMotivoBole">
+      <label>Motivo <span id="motivoBoleReq" style="color:var(--pago)">(obligatorio si es free, descuento o extender)</span></label>
+      <textarea class="motivo" id="fMotivo" rows="2" placeholder="Por qué entra free / con descuento / se extiende el QR"></textarea>
+    </div>
 
     <div class="ayuda" id="firmaAut"></div>
     <button class="btnMain" id="btnGuardar" onclick="guardar()">ANOTAR</button>
@@ -502,10 +550,20 @@
     <label>Agregar un consumo</label>
     <div class="chips" id="bTipos"></div>
     <div id="bPrecioSec" style="display:none">
-      <label style="margin-top:12px">Precio</label>
+      <label style="margin-top:12px">Precio de lista / cobrado</label>
       <div class="chips" id="bPrecios"></div>
     </div>
-    <label style="margin-top:12px">Cantidad</label>
+    <label style="margin-top:12px">Tipo de movimiento</label>
+    <div class="chips" id="bMovTipos"></div>
+    <div id="wrapMotivoBarra">
+      <label>Motivo <span style="color:var(--pago)">(obligatorio si es sin cargo o con descuento)</span></label>
+      <textarea class="motivo" id="bMotivo" rows="2" placeholder="Por qué se regala o se cobra menos"></textarea>
+    </div>
+    <label>Quién autoriza</label>
+    <input type="text" id="bAutoriza" placeholder="Socio que autoriza" autocomplete="off">
+    <label>Área</label>
+    <div class="chips" id="bAreas"></div>
+    <label style="margin-top:12px" id="bCantLbl">Cantidad</label>
     <div class="stepRow">
       <button class="stepBtn" onclick="bStep(-1)">−</button>
       <div class="num" id="bCant">1</div>
@@ -561,8 +619,14 @@ const KEY='sb_publishable_jqsitKb6yi7GBuqXOwPy_w_DEmtw-3w';
 const KS='fendy_bol_sesion';
 
 let ses=null, yo=null, evento=null, items=[], sincronizando=false;
+let eventos=[], eventoFijado=false, verAnulados=false, idsRango=null;
 try{ses=JSON.parse(localStorage.getItem(KS)||'null');}catch(e){}
+const TZ='America/Argentina/Buenos_Aires';
 const esAdmin=()=>!!yo&&yo.rol==='admin';
+const esAuditor=()=>!!yo&&yo.rol==='auditor';
+const esAdminOAuditor=()=>esAdmin()||esAuditor();
+const puedeMutar=()=>!!yo&&yo.rol!=='auditor';
+const veBebidasAhora=()=>esAdminOAuditor()||(yo&&yo.rol==='barra');
 // Estación (puesto): qué boletería es esta compu/celu. Se guarda por dispositivo.
 const ESTACIONES_BOLE=['Arriba','Abajo'];
 let miEstacion=localStorage.getItem('fendy_estacion')||'';
@@ -670,14 +734,14 @@ function menu(){
   const b=[{txt:ICO.llave+' Cambiar mi contraseña',tipo:'sec',fn:pedirNuevaClave}];
   if(yo.rol==='boleteria')b.push({txt:ICO.puerta+' Cambiar boletería (Arriba/Abajo)',tipo:'sec',fn:elegirEstacion});
   if(esMultipuesto())b.push({txt:ICO.puerta+' Cambiar puesto (boletería / barra)',tipo:'sec',fn:elegirPuesto});
-  if(esAdmin()){
-    if(evento)b.push({txt:ICO.grafico+' Reporte / cerrar noche',tipo:'sec',fn:verReporte});
+  if(esAdminOAuditor()){
+    if(evento)b.push({txt:ICO.grafico+(esAdmin()?' Reporte / cerrar noche':' Resumen de la noche'),tipo:'sec',fn:verReporte});
     b.push({txt:ICO.archivo+' Noches anteriores',tipo:'sec',fn:verHistorico});
-    b.push({txt:ICO.grafico+' Exportar datos (Excel)',tipo:'sec',fn:exportarDatos});
+    b.push({txt:ICO.grafico+' Exportar datos (Excel / CSV)',tipo:'sec',fn:exportarDatos});
   }
   b.push({txt:'⏻ Cerrar sesión',tipo:'sec',fn:salir});
   b.push({txt:'Cerrar',tipo:'gho'});
-  modal(yo.nombre,ses.email,'',b);
+  modal(yo.nombre,ses.email+(esAuditor()?' · auditor (solo lectura)':''),'',b);
 }
 /* ================= EXPORTAR DATOS A EXCEL (.xlsx autocontenido) ================= */
 const _crcTab=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c>>>0;}return t;})();
@@ -735,57 +799,120 @@ function construirXlsx(hojas){
   hojas.forEach((h,i)=>files.push({name:`xl/worksheets/sheet${i+1}.xml`,data:U(_hojaXml(h))}));
   return _zipStore(files);
 }
+function fmtAR(t){
+  if(!t)return '';
+  try{return new Date(t).toLocaleString('es-AR',{timeZone:TZ,day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+  catch(_){return String(t);}
+}
+function csvEscape(v){ const s=String(v==null?'':v); return /[",\n;]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
+function descargarBlob(blob,nombre){
+  const url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+function hojaACSV(h){
+  const lines=[h.headers.map(csvEscape).join(';')];
+  h.rows.forEach(r=>lines.push(r.map(csvEscape).join(';')));
+  return '\ufeff'+lines.join('\n');
+}
 async function exportarDatos(){
+  if(!esAdminOAuditor())return alert('Solo admin o auditor pueden exportar.');
   aviso('Cargando noches…','ok');
   try{
     const lista=await api('/rest/v1/rpc/historico_noches',{method:'POST',body:'{}'});
     aviso('');
     if(!lista.length)return alert('Todavía no hay noches para exportar.');
-    const body=`<div style="max-height:46vh;overflow:auto">`+lista.map(n=>`
+    const pre=new Set(idsRango&&idsRango.length?idsRango:(evento?[evento.id]:[]));
+    const body=`<div class="ayuda" style="margin-bottom:8px">Elegí noches, o usá el rango de fechas de arriba. Sale Excel y CSV, con auditoría.</div>
+      <div style="max-height:46vh;overflow:auto">`+lista.map(n=>`
       <label style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid rgba(201,150,43,.16)">
-        <input type="checkbox" class="expN" value="${n.id}" data-fecha="${esc(fechaLarga(n.fecha))}" checked style="width:20px;height:20px;accent-color:var(--oro)">
-        <span><b style="text-transform:capitalize">${fechaLarga(n.fecha)}</b><br><small style="color:var(--dim)">${n.personas} anotados · ${n.ingresaron} entraron</small></span>
+        <input type="checkbox" class="expN" value="${n.id}" data-fecha="${esc(fechaLarga(n.fecha))}" ${!pre.size||pre.has(n.id)?'checked':''} style="width:20px;height:20px;accent-color:var(--oro)">
+        <span><b style="text-transform:capitalize">${esc(n.nombre||fechaLarga(n.fecha))}</b> · ${fechaLarga(n.fecha)} ${n.abierto?'<span class="histAbierta">OPEN</span>':'<small>closed</small>'}<br><small style="color:var(--dim)">${n.personas} anotados · ${n.ingresaron} entraron</small></span>
       </label>`).join('')+`</div>`;
-    modal('Exportar a Excel','Tildá las noches. Si elegís varias, salen todas en un mismo Excel con filtro por fecha.',body,[
-      {txt:ICO.grafico+' Descargar Excel',tipo:'pri',mantener:true,accion:generarExport},
+    modal('Exportar','Tildá las noches. Salen combinadas, con filtro por fecha y campos de auditoría.',body,[
+      {txt:ICO.grafico+' Descargar Excel',tipo:'pri',mantener:true,accion:()=>generarExport('xlsx')},
+      {txt:ICO.archivo+' Descargar CSV',tipo:'sec',mantener:true,accion:()=>generarExport('csv')},
       {txt:'Cerrar',tipo:'gho'}]);
   }catch(e){ aviso(''); alert('No se pudo: '+e.message); }
 }
-async function generarExport(){
+async function generarExport(formato){
   const chk=[...document.querySelectorAll('.expN:checked')];
   if(!chk.length)return alert('Elegí al menos una noche.');
   const ids=chk.map(c=>c.value), fmap={}; chk.forEach(c=>fmap[c.value]=c.dataset.fecha);
-  aviso('Generando Excel…','ok');
+  aviso('Generando…','ok');
   try{
-    const cols='nombre,grupo,autoriza,nota,free,sinrec,ext,pago,precio,i_free,i_sinrec,i_ext,i_pago,creado_en,evento_id';
-    const data=await api(`/rest/v1/anotados?select=${cols}&evento_id=in.(${ids.join(',')})&order=evento_id,autoriza,nombre`);
-    const nn=x=>Number(x)||0, hora=t=>{try{return new Date(t).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch(_){return '';}};
-    const det=[]; const socio={}; const noche={};
+    const colsA='nombre,grupo,autoriza,nota,motivo,free,sinrec,ext,pago,precio,i_free,i_sinrec,i_ext,i_pago,ingreso_at,creado_en,creado_por,creado_at,modificado_por,modificado_at,anulado,anulado_por,anulado_at,motivo_anulacion,evento_id';
+    const colsC='nombre,producto,tipo,tipo_movimiento,cantidad,botellas,precio_lista,precio_cobrado,precio,cambio,extendido,motivo,area,autoriza,estado,entregado,entregado_por,entregado_at,creado_en,creado_por,creado_at,modificado_por,modificado_at,anulado,anulado_por,anulado_at,motivo_anulacion,evento_id';
+    const qIds=ids.join(',');
+    const [data, cons, audits]=await Promise.all([
+      api(`/rest/v1/anotados?select=${colsA}&evento_id=in.(${qIds})&order=evento_id,autoriza,nombre`),
+      api(`/rest/v1/consumos?select=${colsC}&evento_id=in.(${qIds})&order=evento_id,autoriza,nombre`),
+      esAdminOAuditor()?api(`/rest/v1/audit_log?select=tabla,registro_id,accion,campo,valor_anterior,valor_nuevo,quien,cuando&order=cuando.desc&limit=5000`):Promise.resolve([])
+    ]);
+    const nn=x=>Number(x)||0;
+    const det=[], socio={}, noche={};
     data.forEach(a=>{
       const nf=fmap[a.evento_id]||'', ta=nn(a.free)+nn(a.sinrec)+nn(a.ext)+nn(a.pago),
             te=nn(a.i_free)+nn(a.i_sinrec)+nn(a.i_ext)+nn(a.i_pago), rec=nn(a.i_pago)*nn(a.precio);
-      det.push([nf,a.nombre||'',a.grupo||'',a.autoriza||'',nn(a.free),nn(a.i_free),nn(a.sinrec),nn(a.i_sinrec),
-        nn(a.ext),nn(a.i_ext),nn(a.pago),nn(a.i_pago),nn(a.precio),ta,te,ta-te,rec,hora(a.creado_en)]);
+      det.push([nf,a.nombre||'',a.grupo||'',a.autoriza||'',a.motivo||a.nota||'',nn(a.free),nn(a.i_free),nn(a.sinrec),nn(a.i_sinrec),
+        nn(a.ext),nn(a.i_ext),nn(a.pago),nn(a.i_pago),nn(a.precio),ta,te,ta-te,rec,fmtAR(a.ingreso_at),fmtAR(a.creado_at||a.creado_en),
+        a.creado_por||'',fmtAR(a.modificado_at),a.modificado_por||'',a.anulado?'sí':'',a.anulado_por||'',fmtAR(a.anulado_at),a.motivo_anulacion||'']);
+      if(a.anulado)return;
       const ks=nf+'||'+(a.autoriza||'—'); const s=socio[ks]||(socio[ks]={nf,so:a.autoriza||'—',f:0,a:0,e:0,fr:0,r:0});
       s.f++; s.a+=ta; s.e+=te; s.fr+=nn(a.i_free); s.r+=rec;
       const d=noche[nf]||(noche[nf]={f:0,a:0,e:0,r:0}); d.f++; d.a+=ta; d.e+=te; d.r+=rec;
     });
+    const barra=(cons||[]).map(c=>[
+      fmap[c.evento_id]||'',c.nombre||'',c.producto||c.tipo||'',c.tipo_movimiento||'',nn(c.cantidad),nn(c.botellas),
+      nn(c.precio_lista),nn(c.precio_cobrado!=null?c.precio_cobrado:c.precio),c.motivo||'',c.area||'',c.autoriza||'',
+      c.estado||(c.entregado?'delivered':'pending'),c.entregado_por||'',fmtAR(c.entregado_at),
+      c.creado_por||'',fmtAR(c.creado_at||c.creado_en),c.modificado_por||'',fmtAR(c.modificado_at),
+      c.anulado?'sí':'',c.anulado_por||'',fmtAR(c.anulado_at),c.motivo_anulacion||''
+    ]);
+    const aud=(audits||[]).map(x=>[x.tabla,x.registro_id,x.accion,x.campo||'',x.valor_anterior||'',x.valor_nuevo||'',x.quien||'',fmtAR(x.cuando)]);
+    const porTipo={}, porProd={}, porAut={};
+    (cons||[]).filter(c=>!c.anulado).forEach(c=>{
+      const t=c.tipo_movimiento||'VENTA', p=c.producto||c.tipo||'—', au=c.autoriza||'—';
+      const cob=nn(c.precio_cobrado!=null?c.precio_cobrado:c.precio)*nn(c.cantidad||1);
+      const u=nn(c.cantidad||1);
+      const a=porTipo[t]||(porTipo[t]={t,n:0,u:0,cob:0,gr:0}); a.n++; a.u+=u; if(cob)a.cob+=cob; else a.gr+=u;
+      const b=porProd[p]||(porProd[p]={p,n:0,u:0,cob:0,bot:0}); b.n++; b.u+=u; b.cob+=cob; b.bot+=nn(c.botellas);
+      const d=porAut[au]||(porAut[au]={au,n:0,u:0,cob:0,gr:0}); d.n++; d.u+=u; if(cob)d.cob+=cob; else d.gr+=u;
+    });
     const hojas=[
-      {name:'Detalle', money:new Set([12,16]),
-       headers:['Noche','Nombre','Grupo / Mesa','Socio','Free anot.','Free entró','S/Rec anot.','S/Rec entró','Ext anot.','Ext entró','Pagan anot.','Pagan entró','Precio','Total anotados','Total entraron','No vinieron','Recaudado','Cargado'],
+      {name:'Boletería', money:new Set([13,17]),
+       headers:['Noche','Nombre','Grupo / Mesa','Autoriza','Motivo','FREE anot.','FREE entró','DESCUENTO anot.','DESCUENTO entró','EXT anot.','EXT entró','PAGA anot.','PAGA entró','Precio','Total anotados','Total entraron','No vinieron','Recaudado','Hora entrada','Creado at','Creado por','Modificado at','Modificado por','Anulado','Anulado por','Anulado at','Motivo anulación'],
        rows:det},
+      {name:'Barra', money:new Set([6,7]),
+       headers:['Noche','Persona','Producto','Tipo','Cantidad','Botellas','Precio lista','Precio cobrado','Motivo','Área','Autoriza','Estado','Entregó','Entregado at','Creado por','Creado at','Modificado por','Modificado at','Anulado','Anulado por','Anulado at','Motivo anulación'],
+       rows:barra},
       {name:'Por socio', money:new Set([6]),
        headers:['Noche','Socio','Fichas','Anotados','Entraron','Free entró','Recaudado'],
        rows:Object.values(socio).sort((a,b)=>a.nf.localeCompare(b.nf)||a.so.localeCompare(b.so)).map(s=>[s.nf,s.so,s.f,s.a,s.e,s.fr,s.r])},
-      {name:'Resumen por noche', money:new Set([6]),
+      {name:'Resumen noche', money:new Set([6]),
        headers:['Noche','Fichas','Personas anotadas','Entraron','No vinieron','% asist.','Recaudado en puerta'],
        rows:Object.entries(noche).map(([nf,d])=>[nf,d.f,d.a,d.e,d.a-d.e,(d.a?Math.round(100*d.e/d.a):0)+'%',d.r])},
+      {name:'Barra por tipo', money:new Set([3]),
+       headers:['Tipo movimiento','Ítems','Unidades','Cobrado','Unid. gratis'],
+       rows:Object.values(porTipo).map(x=>[x.t,x.n,x.u,x.cob,x.gr])},
+      {name:'Barra por producto', money:new Set([3]),
+       headers:['Producto','Ítems','Unidades','Cobrado','Botellas'],
+       rows:Object.values(porProd).map(x=>[x.p,x.n,x.u,x.cob,x.bot])},
+      {name:'Barra por autoriza', money:new Set([3]),
+       headers:['Autoriza','Ítems','Unidades','Cobrado','Unid. gratis'],
+       rows:Object.values(porAut).map(x=>[x.au,x.n,x.u,x.cob,x.gr])},
+      {name:'Audit log', money:new Set(),
+       headers:['Tabla','Registro','Acción','Campo','Valor anterior','Valor nuevo','Quién','Cuándo'],
+       rows:aud},
     ];
-    const blob=construirXlsx(hojas);
-    const url=URL.createObjectURL(blob), a=document.createElement('a');
-    a.href=url; a.download=`FENDY - Ingresos (${chk.length} noche${chk.length>1?'s':''}).xlsx`;
-    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000);
-    aviso('Excel generado ✓','ok'); cerrarModal();
+    const stamp=new Date().toISOString().slice(0,10);
+    if(formato==='csv'){
+      const files=hojas.map(h=>({name:`${h.name}.csv`,data:new TextEncoder().encode(hojaACSV(h))}));
+      descargarBlob(_zipStore(files),`FENDY-export-${stamp}.zip`);
+    }else{
+      descargarBlob(construirXlsx(hojas),`FENDY - Trazabilidad (${chk.length} noche${chk.length>1?'s':''}).xlsx`);
+    }
+    aviso('Exportado ✓','ok'); cerrarModal();
   }catch(e){ aviso(''); alert('No se pudo generar: '+e.message); }
 }
 function pedirNuevaClave(){
@@ -804,15 +931,21 @@ function pedirNuevaClave(){
 function hoyISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function abrirNoche(){
   if(!esAdmin())return;
-  modal('Abrir una noche','Elegí la fecha del evento. Aunque sea la madrugada del domingo, usá la fecha del sábado.',
-    `<label>Fecha del evento</label><input type="date" id="nfecha" value="${hoyISO()}">`,
+  modal('Abrir una noche','La noche anterior NO se borra: queda cerrada con toda su historia. Aunque sea la madrugada del domingo, usá la fecha del sábado.',
+    `<label>Fecha del evento</label><input type="date" id="nfecha" value="${hoyISO()}">
+     <label>Nombre</label><input type="text" id="nnombre" placeholder="Ej: Sábado 24/10 · after" value="">
+     <label class="filtroChk" style="margin-top:12px"><input type="checkbox" id="ncerrar" checked><span>Cerrar la noche anterior (sin borrar datos)</span></label>`,
     [{txt:'Abrir esta noche',tipo:'pri',mantener:true,accion:async()=>{
         const f=document.getElementById('nfecha').value;
+        const nom=(document.getElementById('nnombre').value||'').trim();
+        const cerrar=document.getElementById('ncerrar').checked;
         if(!/^\d{4}-\d{2}-\d{2}$/.test(f))return alert('Elegí una fecha.');
         try{
-          await api('/rest/v1/eventos',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},
-            body:JSON.stringify({fecha:f,nombre:'Evento '+f,abierto:true})});
-          cerrarModal(); await tick(); aviso('Noche abierta ✓','ok');
+          const r=await api('/rest/v1/rpc/abrir_evento',{method:'POST',
+            body:JSON.stringify({p_fecha:f,p_nombre:nom||('Evento '+f),p_cerrar_anterior:cerrar})});
+          cerrarModal();
+          evento=r; eventoFijado=true; idsRango=null;
+          entrarModoNoche(); await tick(); aviso('Noche abierta ✓','ok');
         }catch(e){alert('No se pudo abrir: '+e.message);}
       }},{txt:'Cancelar',tipo:'gho'}]);
 }
@@ -837,13 +970,14 @@ function cerrarModal(){document.getElementById('modal').classList.add('hide');}
 let repActual=null;
 const money=n=>'$'+Number(n||0).toLocaleString('es-AR');
 async function verReporte(){
-  if(!evento)return alert('No hay ninguna noche abierta.');
+  if(!esAdminOAuditor())return alert('Solo admin o auditor.');
+  if(!evento)return alert('Elegí un evento en el selector.');
   aviso('Generando reporte…','ok');
   try{
     const rep=await api('/rest/v1/rpc/reporte_noche',{method:'POST',
       body:JSON.stringify({p_evento:evento.id,p_cerrar:false})});
     aviso('');
-    repActual=rep; renderReporte(rep,{permitirCerrar:true});
+    repActual=rep; renderReporte(rep,{permitirCerrar:esAdmin()&&evento.abierto});
   }catch(e){ aviso(''); alert('No se pudo generar el reporte: '+e.message); }
 }
 async function verHistorico(){
@@ -855,7 +989,7 @@ async function verHistorico(){
     document.getElementById('repSub').textContent=`${lista.length} noche${lista.length!==1?'s':''} registrada${lista.length!==1?'s':''}`;
     document.getElementById('repBody').innerHTML = lista.length ? lista.map(n=>`
       <button class="histItem" onclick="abrirReporteHistorico('${n.id}',${n.abierto})">
-        <div><div class="histFecha">${fechaLarga(n.fecha)}${n.abierto?' <span class="histAbierta">EN CURSO</span>':''}</div>
+        <div><div class="histFecha">${esc(n.nombre||fechaLarga(n.fecha))}${n.abierto?' <span class="histAbierta">OPEN</span>':''}</div>
         <div class="histSub">${n.personas} anotados · ${n.ingresaron} entraron · ${money(n.recaudado)}</div></div>
         <div class="histFlecha">›</div>
       </button>`).join('') : '<div class="repNo"><span style="color:var(--dim)">Todavía no hay noches registradas.</span></div>';
@@ -883,8 +1017,8 @@ function renderReporte(rep,opts){
   opts=opts||{};
   const {permitirCerrar=false, cerrada=false, desdeHistorico=false}=opts;
   const t=rep.totales, c=rep.por_condicion, r=rep.ranking;
-  document.getElementById('repTit').textContent=cerrada?'Noche cerrada ✓':(desdeHistorico?'Reporte':'Reporte de la noche');
-  document.getElementById('repSub').textContent=fechaLarga(rep.fecha);
+  document.getElementById('repTit').textContent=cerrada?'Noche cerrada ✓':(desdeHistorico?'Reporte':'Resumen de la noche');
+  document.getElementById('repSub').textContent=(rep.nombre?rep.nombre+' · ':'')+fechaLarga(rep.fecha)+(rep.cerrada||cerrada?' · closed':' · open');
   const condRow=(lbl,cls,o)=>`<tr><td><span class="badge ${cls}">${lbl}</span></td><td>${o.anotados}</td><td>${o.entraron}</td></tr>`;
   const soc=rep.por_socio||[];
   const rank=(k,box)=>box?`<div class="repRankBox"><div class="k">${k}</div><div class="v">${esc(box.socio)} <small>· ${box.valor}</small></div></div>`
@@ -920,9 +1054,9 @@ function renderReporte(rep,opts){
       <thead><tr><th>Condición</th><th>Anotados</th><th>Entraron</th></tr></thead>
       <tbody>
         ${condRow('FREE','b-free',c.free)}
-        ${c.sinrec.anotados>0?condRow('SIN RECARGO','b-sinrec',c.sinrec):''}
+        ${c.sinrec.anotados>0?condRow('DESCUENTO','b-sinrec',c.sinrec):''}
         ${condRow('EXTENDER QR','b-ext',c.ext)}
-        ${condRow('PAGAN','b-pago',c.pago)}
+        ${condRow('PAGA','b-pago',c.pago)}
       </tbody></table></div>`;
 
   h+=`<div class="repSec">Ranking${rep.atribucion_confiable?'':' (referencial)'}</div>
@@ -948,7 +1082,7 @@ function renderReporte(rep,opts){
   // ===== BARRA / CONSUMOS =====
   const B=rep.barra;
   if(B && B.totales && B.totales.items>0){
-    const bt=B.totales;
+    const bt=B.totales, gv=B.gratis_vs_cobrado||{};
     h+=`<div class="repSec">${ICO.copa} Barra — consumos</div>
       <div class="repTiles">
         <div class="repTile"><b>${bt.items}</b><span>cargados</span></div>
@@ -957,8 +1091,22 @@ function renderReporte(rep,opts){
         <div class="repTile"><b style="color:var(--free)">${bt.regalados}</b><span>sin cargo</span></div>
         <div class="repTile"><b style="color:var(--ext)">${bt.upgrades}</b><span>upgrades</span></div>
         <div class="repTile"><b style="color:var(--ext)">${bt.extendidos||0}</b><span>extendidos</span></div>
+        <div class="repTile"><b>${bt.botellas||0}</b><span>botellas</span></div>
+        <div class="repTile"><b style="color:var(--free)">${gv.unid_gratis||0}</b><span>unid. gratis</span></div>
         <div class="repTile big"><b class="dinero" style="color:var(--pago)">${money(bt.facturado)}</b><span>facturado en barra</span></div>
       </div>`;
+    const tm=B.por_tipo_movimiento||[];
+    if(tm.length)
+      h+=`<div class="repSec">Barra por tipo</div>
+        <div style="overflow-x:auto"><table class="repTable">
+          <thead><tr><th>Tipo</th><th>Ítems</th><th>Unidades</th><th>Facturado</th></tr></thead>
+          <tbody>${tm.map(x=>`<tr><td><b>${esc(x.tipo_movimiento)}</b></td><td>${x.items}</td><td>${x.unidades}</td><td class="dinero">${money(x.facturado)}</td></tr>`).join('')}</tbody></table></div>`;
+    const ar=B.por_area||[];
+    if(ar.length)
+      h+=`<div class="repSec">Barra por área</div>
+        <div style="overflow-x:auto"><table class="repTable">
+          <thead><tr><th>Área</th><th>Ítems</th><th>Facturado</th></tr></thead>
+          <tbody>${ar.map(x=>`<tr><td><b>${esc(x.area)}</b></td><td>${x.items}</td><td class="dinero">${money(x.facturado)}</td></tr>`).join('')}</tbody></table></div>`;
     h+=`<div class="repSec">Por artículo</div>
       <div style="overflow-x:auto"><table class="repTable">
         <thead><tr><th>Artículo</th><th>Cant</th><th>Entreg.</th><th>Sin cargo</th><th>Upgr.</th><th>Extend.</th><th>Facturado</th></tr></thead>
@@ -1008,7 +1156,8 @@ function renderReporte(rep,opts){
   document.getElementById('reporte').scrollTop=0;
 }
 function confirmarCerrar(){
-  modal('¿Cerrar la noche?','Se archiva la lista y no se puede seguir anotando ni marcando ingresos hasta abrir una noche nueva.','',[
+  if(!esAdmin())return;
+  modal('¿Cerrar la noche?','Se archiva la lista. Los datos NO se borran: quedan en el historial.','',[
     {txt:'Sí, finalizar la noche',tipo:'pri',fn:async()=>{
       try{
         const rep=await api('/rest/v1/rpc/reporte_noche',{method:'POST',
@@ -1031,7 +1180,7 @@ function reporteTexto(rep){
   L.push(`🚫 No vinieron: ${t.no_vinieron}`);
   L.push(`💰 Recaudado en puerta: ${money(t.recaudado)}`);
   L.push('');
-  L.push(`FREE: ${c.free.entraron}/${c.free.anotados}${c.sinrec.anotados>0?` · SIN REC: ${c.sinrec.entraron}/${c.sinrec.anotados}`:''} · EXT: ${c.ext.entraron}/${c.ext.anotados} · PAGAN: ${c.pago.entraron}/${c.pago.anotados}`);
+  L.push(`FREE: ${c.free.entraron}/${c.free.anotados}${c.sinrec.anotados>0?` · DESC: ${c.sinrec.entraron}/${c.sinrec.anotados}`:''} · EXT: ${c.ext.entraron}/${c.ext.anotados} · PAGA: ${c.pago.entraron}/${c.pago.anotados}`);
   if(!rep.atribucion_confiable){ L.push(''); L.push('⚠️ Datos por socio de esta noche no confiables (bug corregido).'); }
   L.push(''); L.push('POR SOCIO' + (rep.atribucion_confiable?'':' (referencial)'));
   (rep.por_socio||[]).forEach(s=>L.push(`• ${s.socio}: ${s.personas} cargados, ${s.entraron} entraron, ${s.free} free, ${money(s.recaudado)}`));
@@ -1106,9 +1255,9 @@ function parecidos(nombre){
 function resumenCond(it){
   const p=[];
   if(it.free)p.push(it.free+' free');
-  if(it.sinrec)p.push(it.sinrec+' sin recargo');
+  if(it.sinrec)p.push(it.sinrec+' descuento');
   if(it.ext)p.push(it.ext+' extender QR');
-  if(it.pago)p.push(it.pago+' pagan $'+Number(it.precio).toLocaleString('es-AR'));
+  if(it.pago)p.push(it.pago+' paga $'+Number(it.precio).toLocaleString('es-AR'));
   return p.join(' + ')||'sin condición';
 }
 function chequearDup(){
@@ -1170,34 +1319,40 @@ function resumen(){
   if(varios){
     const tot=g.reduce((a,b)=>a+b.cant,0);
     if(tipos.has('free'))p.push('free');
-    if(tipos.has('sinrec'))p.push('sin recargo');
+    if(tipos.has('sinrec'))p.push('descuento');
     if(tipos.has('ext'))p.push('extender QR');
-    if(tipos.has('pago'))p.push('pagan'+(precio?' $'+precio.toLocaleString('es-AR'):''));
+    if(tipos.has('pago'))p.push('paga'+(precio?' $'+precio.toLocaleString('es-AR'):''));
     btn.textContent=`ANOTAR A LOS ${g.length}`;
     document.getElementById('resumen').textContent=
       `${g.length} fichas · ${tot} persona${tot>1?'s':''}${p.length?' → '+p.join(' + '):''}`;
     return;
   }
   if(tipos.has('free'))p.push(q('qFree')+' free');
-  if(tipos.has('sinrec'))p.push(q('qSinrec')+' sin recargo');
+  if(tipos.has('sinrec'))p.push(q('qSinrec')+' descuento');
   if(tipos.has('ext'))p.push(q('qExt')+' QR a extender');
-  if(tipos.has('pago'))p.push(q('qPago')+' pagan'+(precio?' $'+precio.toLocaleString('es-AR'):''));
+  if(tipos.has('pago'))p.push(q('qPago')+' paga'+(precio?' $'+precio.toLocaleString('es-AR'):''));
   btn.textContent='ANOTAR';
   document.getElementById('resumen').textContent=g[0].nombre+(p.length?' → '+p.join(' + '):'');
 }
 document.getElementById('fNombres').oninput=()=>{syncWraps(); resumen(); chequearDup();};
 
 function guardar(){
+  if(!puedeMutar())return alert('El auditor no puede cargar.');
   if(!evento)return alert('Todavía no cargó el evento. Esperá unos segundos.');
+  if(!evento.abierto)return alert('Esa noche está cerrada. Abrí una nueva para cargar.');
   if(!tipos.size)return alert('Elegí al menos una condición');
   if(tipos.has('pago')&&!precio)return alert('Falta el precio');
   const nota=document.getElementById('fNota').value.trim();
+  const motivo=document.getElementById('fMotivo').value.trim();
+  if((tipos.has('free')||tipos.has('sinrec')||tipos.has('ext'))&&!motivo)
+    return alert('El motivo es obligatorio cuando es FREE, DESCUENTO o EXTENDER QR.');
   const base=(nombre,cant,grupo)=>({
     evento_id:evento.id, nombre, grupo:grupo||'',
     free:tipos.has('free')?cant:0, sinrec:tipos.has('sinrec')?cant:0,
     ext:tipos.has('ext')?cant:0, pago:tipos.has('pago')?cant:0,
-    precio:tipos.has('pago')?precio:0, nota,
-    autoriza:yo.nombre, autoriza_id:miId()   // queda la firma real, no solo el nombre
+    precio:tipos.has('pago')?precio:0, nota, motivo,
+    autoriza:yo.nombre, autoriza_id:miId(),
+    creado_por:yo.nombre
   });
   const g=gente();
   if(!g.length)return alert('Falta el nombre');
@@ -1238,6 +1393,7 @@ async function enviar(filas){
     document.getElementById('fNombres').value=''; const _fs=document.getElementById('fSug'); if(_fs)_fs.innerHTML='';
     document.getElementById('fGrupo').value='';
     document.getElementById('fNota').value='';
+    document.getElementById('fMotivo').value='';
     document.getElementById('dupAviso').innerHTML='';
     tipos.clear(); precio=0;
     document.querySelectorAll('#fTipos .chip,#fPrecios .chip').forEach(x=>x.classList.remove('sel'));
@@ -1253,28 +1409,90 @@ async function enviar(filas){
 /* ---------- datos ---------- */
 const CONDS=[
   {k:'free',lbl:'FREE',cls:'b-free',ing:'i_free'},
-  {k:'sinrec',lbl:'SIN RECARGO',cls:'b-sinrec',ing:'i_sinrec'},
+  {k:'sinrec',lbl:'DESCUENTO',cls:'b-sinrec',ing:'i_sinrec'},
   {k:'ext',lbl:'EXTENDER QR',cls:'b-ext',ing:'i_ext'},
-  {k:'pago',lbl:'PAGAN',cls:'b-pago',ing:'i_pago'}];
+  {k:'pago',lbl:'PAGA',cls:'b-pago',ing:'i_pago'}];
 const totalDe=it=>it.free+it.sinrec+it.ext+it.pago;
 const ingresDe=it=>it.i_free+it.i_sinrec+it.i_ext+it.i_pago;
 const completo=it=>ingresDe(it)>=totalDe(it);
-const hora=it=>new Date(it.creado_en).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
-
+const hora=it=>new Date(it.creado_at||it.creado_en).toLocaleTimeString('es-AR',{timeZone:TZ,hour:'2-digit',minute:'2-digit'});
+function idsConsulta(){
+  if(idsRango&&idsRango.length)return idsRango;
+  if(evento)return [evento.id];
+  return [];
+}
+function filtroAnulado(qs){
+  if(verAnulados)return qs;
+  return qs+(qs.includes('?')?'&':'?')+'anulado=eq.false';
+}
 async function sincronizar(){
-  if(sincronizando||!evento)return;
+  const ids=idsConsulta();
+  if(sincronizando||!ids.length)return;
   sincronizando=true;
   try{
-    const veBebidas = esAdmin()||yo.rol==='barra';
-    const tareas=[api(`/rest/v1/anotados?evento_id=eq.${evento.id}&select=*&order=creado_en.desc`)];
-    if(veBebidas)tareas.push(api(`/rest/v1/consumos?evento_id=eq.${evento.id}&select=*&order=creado_en.desc`));
+    const veBebidas = veBebidasAhora();
+    const inIds=`evento_id=in.(${ids.join(',')})`;
+    const extra=verAnulados?'': '&anulado=eq.false';
+    const tareas=[api(`/rest/v1/anotados?${inIds}${extra}&select=*&order=creado_en.desc`)];
+    if(veBebidas)tareas.push(api(`/rest/v1/consumos?${inIds}${extra}&select=*&order=creado_en.desc`));
     const res=await Promise.all(tareas);
-    items=res[0]; if(veBebidas)consumos=res[1]||[];
+    items=res[0]||[]; if(veBebidas)consumos=res[1]||[];
     aviso('');
     renderCarga(); renderBole();
     if(veBebidas){ renderBarra(); renderBarraCarga(); llenarDatalist(); }
+    pintarFiltroEvento();
   }catch(e){ aviso('Sin conexión — reintentando'); }
   finally{ sincronizando=false; }
+}
+function eventoDe(id){ return eventos.find(e=>e.id===id); }
+function metaEvento(it){
+  if(!idsRango||idsRango.length<2)return '';
+  const ev=eventoDe(it.evento_id); return ev?' · '+fechaCorta(ev.fecha):'';
+}
+function pintarFiltroEvento(){
+  const bar=document.getElementById('filtroBar'); if(!bar||!yo)return;
+  bar.classList.remove('hide');
+  const sel=document.getElementById('selEvento'); if(!sel)return;
+  const cur=evento?evento.id:'';
+  const opts=['<option value="">— elegí un evento —</option>']
+    .concat(eventos.filter(e=>!e.anulado).map(e=>{
+      const st=e.abierto?'OPEN':'closed';
+      return `<option value="${e.id}" ${e.id===cur?'selected':''}>${esc(e.nombre||fechaCorta(e.fecha))} · ${fechaCorta(e.fecha)} · ${st}</option>`;
+    }));
+  if(sel.innerHTML!==opts.join('')){
+    const keep=sel.value;
+    sel.onchange=null;
+    sel.innerHTML=opts.join('');
+    sel.value=cur||keep||'';
+  }
+  sel.onchange=cambiarEvento;
+  document.getElementById('chkAnulados').checked=verAnulados;
+  document.getElementById('auditorBanner').classList.toggle('hide', !esAuditor());
+  document.getElementById('btnExportFiltro').classList.toggle('hide', !esAdminOAuditor());
+}
+function cambiarEvento(){
+  const id=document.getElementById('selEvento').value;
+  idsRango=null;
+  document.getElementById('filtroDesde').value='';
+  document.getElementById('filtroHasta').value='';
+  const ev=eventoDe(id)||null;
+  evento=ev; eventoFijado=!!ev;
+  if(ev){ entrarModoNoche(); sincronizar(); }
+  else { items=[]; consumos=[]; renderCarga(); renderBole(); renderBarra(); renderBarraCarga(); }
+}
+async function aplicarRangoFechas(){
+  const d=document.getElementById('filtroDesde').value, h=document.getElementById('filtroHasta').value;
+  if(!d&&!h){ idsRango=null; eventoFijado=!!evento; await sincronizar(); return; }
+  const desde=d||'2000-01-01', hasta=h||'9999-12-31';
+  idsRango=eventos.filter(e=>!e.anulado && e.fecha>=desde && e.fecha<=hasta).map(e=>e.id);
+  eventoFijado=true;
+  if(idsRango.length===1) evento=eventoDe(idsRango[0]);
+  if(!idsRango.length){ items=[]; consumos=[]; renderCarga(); renderBole(); renderBarra(); renderBarraCarga(); aviso('No hay eventos en ese rango'); return; }
+  await sincronizar();
+}
+function toggleAnulados(){
+  verAnulados=document.getElementById('chkAnulados').checked;
+  sincronizar();
 }
 /* ================= BARRA / BEBIDAS ================= */
 let consumos=[];
@@ -1305,6 +1523,12 @@ let bTipo='', bPrecio=null, bCambio='', bCantN=1, bChipsListos=false, carrito=[]
 let bUpgradeModo=false;   // true = ya toco 🔄 y falta elegir el trago NUEVO
 let bExtendido=false;     // el consumo que se esta cargando es una EXTENSION
 let bExtModo=false;       // la grilla esta mostrando las 3 cosas que se extienden
+const TIPOS_MOV=['VENTA','CORTESÍA','CUMPLEAÑOS','RRPP','MESA VIP','STAFF','INVITACIÓN'];
+const AREAS_BARRA=['Principal','VIP','Zebra','Terraza'];
+const BOTELLAS=new Set(['CIROC','GREY GOOSE','PRAVDA','CHANDON','MOET','VEUVE','BARÓN B','CHAMPAGNE']);
+let bMov='VENTA', bArea='';
+function esBotella(t){ return BOTELLAS.has(String(t||'').toUpperCase()); }
+function precioListaDe(t){ const p=PRECIOS_SUGERIDOS[t]; return p==null?0:p; }
 
 /* ---------- iconos vectoriales (nada de emojis en la interfaz) ---------- */
 const ICO={
@@ -1365,6 +1589,10 @@ function bExtender(){
 function bPickExt(el){
   bExtModo=false; bExtendido=true;
   bTipo=el.dataset.tipo; bPrecio=0; bCambio=''; bUpgradeModo=false; bPrecioSug=false;
+  if(/CUMPLEA/.test(bTipo)) bMov='CUMPLEAÑOS';
+  else if(/RRPP/.test(bTipo)) bMov='RRPP';
+  else bMov='INVITACIÓN';
+  document.querySelectorAll('#bMovTipos .chip').forEach(c=>c.classList.toggle('sel',c.dataset.mov===bMov));
   bOtroCerrar(); bRenderTipos(); actualizarPrecioSec(); bResumen();
   aviso('Se extiende: '+bTipo,'ok');
 }
@@ -1376,7 +1604,26 @@ function bInit(){
     +`<button type="button" class="chip" onclick="bOtroPrecio()">Otro…</button>`
     +`<button type="button" class="chip" id="bChipCambio" style="border-color:var(--ext);color:var(--ext)" onclick="bUpgrade()"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> Upgrade / cambio</button>`;
   document.getElementById('bFirma').innerHTML=`Se carga a nombre de <b>${esc(yo.nombre)}</b>.`;
+  const aut=document.getElementById('bAutoriza'); if(aut&&!aut.value)aut.value=yo.nombre;
   document.getElementById('bNombre').oninput=()=>{ bResumen(); bHint(); };
+  const mov=document.getElementById('bMovTipos');
+  if(mov&&!mov.dataset.ok){
+    mov.dataset.ok='1';
+    mov.innerHTML=TIPOS_MOV.map(t=>`<button type="button" class="chip${t==='VENTA'?' sel':''}" data-mov="${t}" onclick="bPickMov(this)">${t}</button>`).join('');
+  }
+  const ar=document.getElementById('bAreas');
+  if(ar&&!ar.dataset.ok){
+    ar.dataset.ok='1';
+    ar.innerHTML=AREAS_BARRA.map(t=>`<button type="button" class="chip" data-area="${t}" onclick="bPickArea(this)">${t}</button>`).join('');
+  }
+}
+function bPickMov(el){
+  bMov=el.dataset.mov;
+  document.querySelectorAll('#bMovTipos .chip').forEach(c=>c.classList.toggle('sel',c===el));
+}
+function bPickArea(el){
+  bArea=el.dataset.area;
+  document.querySelectorAll('#bAreas .chip').forEach(c=>c.classList.toggle('sel',c===el));
 }
 function bSetTipo(t, el){
   document.querySelectorAll('#bTipos .chip').forEach(c=>c.classList.remove('sel'));
@@ -1392,6 +1639,7 @@ function bSetTipo(t, el){
     bSugerir();
   }
   actualizarPrecioSec();
+  const lbl=document.getElementById('bCantLbl'); if(lbl)lbl.textContent=esBotella(bTipo)?'Botellas':'Cantidad';
   bResumen();
 }
 function bPickTipo(el){ bSetTipo(el.dataset.tipo, el); }
@@ -1463,7 +1711,7 @@ function bUpgrade(){
   actualizarPrecioSec();
   bResumen();
 }
-function bStep(d){ bCantN=Math.max(1,Math.min(30,bCantN+d)); document.getElementById('bCant').textContent=bCantN; bResumen(); }
+function bStep(d){ bCantN=Math.max(1,Math.min(30,bCantN+d)); document.getElementById('bCant').textContent=bCantN; const lbl=document.getElementById('bCantLbl'); if(lbl)lbl.textContent=esBotella(bTipo)?'Botellas':'Cantidad'; bResumen(); }
 function bResumen(){
   const el=document.getElementById('bResumen'); if(!el)return;
   if(bUpgradeModo){ el.innerHTML=`<span style="color:var(--ext)"><svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> Cambia su ${esc(bCambio)}</span><br><span style="color:var(--dim);font-weight:600;font-size:14px">Tocá el trago NUEVO arriba</span>`; return; }
@@ -1479,7 +1727,15 @@ function bAgregar(){
   if(bUpgradeModo)return alert('Falta el trago NUEVO del upgrade: tocalo arriba.');
   if(!bTipo)return alert('Elegí qué consume.');
   if(bPrecio==null && !bCambio)return alert('Elegí el precio, sin cargo, o upgrade.');
-  carrito.push({tipo:bTipo, precio:bCambio?0:bPrecio, cambio:bCambio, cant:bCantN, extendido:bExtendido});
+  const lista=precioListaDe(bTipo);
+  const cobrado=bCambio?0:bPrecio;
+  let mov=bMov||'VENTA';
+  if(cobrado===0 && mov==='VENTA') mov='CORTESÍA';
+  const motivo=(document.getElementById('bMotivo')?.value||'').trim();
+  if((cobrado===0 || mov!=='VENTA' || (lista>0 && cobrado<lista)) && !motivo)
+    return alert('El motivo es obligatorio cuando es sin cargo o con descuento.');
+  const autoriza=(document.getElementById('bAutoriza')?.value||yo.nombre).trim();
+  carrito.push({tipo:bTipo, producto:bTipo, precio:cobrado, precio_lista:lista, precio_cobrado:cobrado, cambio:bCambio, cant:bCantN, extendido:bExtendido, tipo_movimiento:mov, motivo, autoriza, area:bArea, botellas:esBotella(bTipo)?bCantN:0});
   bTipo=''; bPrecio=null; bCambio=''; bCantN=1; bPrecioSug=false; bUpgradeModo=false; bExtendido=false; bExtModo=false; bOtroCerrar();
   bRenderTipos();
   document.getElementById('bCant').textContent='1';
@@ -1494,8 +1750,8 @@ function renderCarrito(){
   if(!carrito.length){ el.innerHTML='<div class="cargando" style="padding:14px 0">Elegí abajo qué se lleva y tocá “Agregar al pedido”</div>'; return; }
   el.innerHTML=carrito.map((it,i)=>{const col=colorTipo(it.tipo);
     const dCol = (it.extendido||it.cambio) ? 'var(--ext)' : it.precio ? 'var(--pago)' : 'var(--free)';
-    const detalle = it.extendido ? 'EXTENDIDO' : it.cambio ? `<svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> UPGRADE${it.cambio!=='—'?' de '+esc(it.cambio):''}`
-      : it.precio ? money(it.precio)+(it.cant>1?' c/u · total '+money(it.precio*it.cant):'') : 'SIN CARGO';
+    const detalle = (it.tipo_movimiento&&it.tipo_movimiento!=='VENTA'?it.tipo_movimiento+' · ':'')+(it.extendido ? 'EXTENDIDO' : it.cambio ? `<svg class="ic" viewBox="0 0 24 24" style="width:13px;height:13px"><path d="M4 7h12m0 0-3.5-3.5M16 7l-3.5 3.5M20 17H8m0 0 3.5-3.5M8 17l3.5 3.5"/></svg> UPGRADE${it.cambio!=='—'?' de '+esc(it.cambio):''}`
+      : it.precio ? money(it.precio)+(it.cant>1?' c/u · total '+money(it.precio*it.cant):'') : 'SIN CARGO')+(it.area?' · '+esc(it.area):'')+(it.botellas?' · '+it.botellas+' botella'+(it.botellas>1?'s':''):'');
     return `<div class="card" style="margin-bottom:8px"><div class="cardTop">
       <div><div class="nombre" style="font-size:19px;font-weight:560;letter-spacing:-.2px">${it.cant>1?it.cant+'× ':''}<span style="color:${col}">${esc(it.tipo)}</span></div>
         <div style="font-size:15.5px;font-weight:500;margin-top:4px;color:${dCol}">${detalle}</div></div>
@@ -1508,14 +1764,24 @@ function bHint(){
   el.innerHTML=ya.length?`<div class="dup"><div class="dupTit">${ICO.copa} ESTA PERSONA YA TIENE CARGADO</div>${ya.map(c=>`<div class="dupIt">${esc(c.tipo)} — ${c.precio?money(c.precio):'sin cargo'}${c.entregado?' <small style="color:var(--free)">(entregado)</small>':''}</div>`).join('')}</div>`:'';
 }
 async function cargarBebida(){
+  if(!puedeMutar())return alert('El auditor no puede cargar.');
   if(!evento)return alert('No hay noche abierta.');
+  if(!evento.abierto)return alert('Esa noche está cerrada. Abrí una nueva para cargar.');
   const n=document.getElementById('bNombre').value.trim();
   if(!n)return alert('Falta el nombre.');
   // si quedó un ítem a medio elegir sin agregar, lo sumamos solo
   if(bTipo && (bPrecio!=null || bCambio)) bAgregar();
   if(!carrito.length)return alert('Agregá al menos un consumo al pedido.');
   const filas=[];
-  carrito.forEach(it=>{ for(let k=0;k<it.cant;k++) filas.push({evento_id:evento.id,nombre:n,tipo:it.tipo,precio:it.cambio?0:it.precio,cambio:it.cambio,extendido:!!it.extendido}); });
+  carrito.forEach(it=>{
+    filas.push({
+      evento_id:evento.id, nombre:n, tipo:it.tipo, producto:it.producto||it.tipo,
+      precio:it.precio_cobrado, precio_lista:it.precio_lista||0, precio_cobrado:it.precio_cobrado,
+      cantidad:it.cant||1, botellas:it.botellas||0, cambio:it.cambio||'', extendido:!!it.extendido,
+      tipo_movimiento:it.tipo_movimiento||'VENTA', motivo:it.motivo||'', autoriza:it.autoriza||yo.nombre,
+      area:it.area||'', zona:it.area||'', creado_por:yo.nombre
+    });
+  });
   const cant=filas.length;
   const btn=document.getElementById('bGuardar'); btn.disabled=true; const txt=btn.textContent; btn.textContent='CARGANDO…';
   try{
@@ -1526,7 +1792,9 @@ async function cargarBebida(){
     document.querySelectorAll('#bTipos .chip,#bPrecios .chip').forEach(c=>c.classList.remove('sel'));
     const cs=document.getElementById('bChipSug'); if(cs)cs.style.display='none';
     actualizarPrecioSec();
-    document.getElementById('bDupAviso').innerHTML=''; renderCarrito(); bResumen();
+    document.getElementById('bDupAviso').innerHTML='';
+    const bm=document.getElementById('bMotivo'); if(bm)bm.value='';
+    renderCarrito(); bResumen();
     aviso(cant>1?`${cant} consumos cargados ✓`:'Consumo cargado ✓','ok');
     await sincronizar(); document.getElementById('bNombre').focus();
   }catch(e){ alert('No se pudo cargar: '+e.message); }
@@ -1540,13 +1808,14 @@ function renderBarraCarga(){
   const nombres=Object.keys(por).sort((a,b)=>new Date(por[b][0].creado_en||0)-new Date(por[a][0].creado_en||0));
   el.innerHTML=nombres.map(n=>{
     const list=por[n], pend=list.filter(c=>!c.entregado).length;
-    const quienes=[...new Set(list.map(c=>c.autoriza).filter(Boolean))].join(' y ');
-    const chips=list.slice(0,4).map(c=>{const col=colorTipo(c.tipo);
-      return `<span class="chip" style="font-size:12px;padding:4px 10px;border-color:${col};color:${col}">${esc(c.tipo)}</span>`;}).join('')
+    const quienes=[...new Set(list.map(c=>c.creado_por||c.autoriza).filter(Boolean))].join(' y ');
+    const chips=list.slice(0,4).map(c=>{const col=colorTipo(c.producto||c.tipo);
+      return `<span class="chip" style="font-size:12px;padding:4px 10px;border-color:${col};color:${col}">${esc(c.producto||c.tipo)}</span>`;}).join('')
       +(list.length>4?`<span class="chip" style="font-size:12px;padding:4px 10px">+${list.length-4}</span>`:'');
-    return `<div class="pCard" data-nombre="${esc(n)}" onclick="abrirCargaPersona(this.dataset.nombre)">
+    const anu=list.some(c=>c.anulado);
+    return `<div class="pCard${anu?' anulado':''}" data-nombre="${esc(n)}" onclick="abrirCargaPersona(this.dataset.nombre)">
       <div style="min-width:0"><div class="nombre">${esc(n)}</div>
-        <div class="meta">${list.length} consumo${list.length!==1?'s':''}${pend?` · ${pend} sin retirar`:' · todo entregado'}${quienes?` · cargó <b style="color:var(--oroClaro)">${esc(quienes)}</b>`:''}</div>
+        <div class="meta">${list.length} consumo${list.length!==1?'s':''}${pend?` · ${pend} sin retirar`:' · todo entregado'}${quienes?` · cargó <b style="color:var(--oroClaro)">${esc(quienes)}</b>`:''} · ${hora(list[0])}${metaEvento(list[0])}</div>
         <div class="chips" style="margin-top:7px">${chips}</div></div>
       <div class="histFlecha">›</div></div>`;
   }).join('')||'<div class="cargando">Todavía no hay consumos cargados esta noche.</div>';
@@ -1554,24 +1823,36 @@ function renderBarraCarga(){
 function abrirCargaPersona(n){
   const list=consumos.filter(c=>c.nombre===n);
   if(!list.length)return;
-  const body=list.map(c=>{const col=colorTipo(c.tipo);
-    const det=c.cambio?('upgrade de '+esc(c.cambio)):(c.precio?money(c.precio):'sin cargo');
-    return `<div class="repNo" style="align-items:center">
-      <span style="min-width:0"><span class="badge" style="border-color:${col};color:${col};background:${col}18">${esc(c.tipo)}</span>
-        <small style="color:var(--dim)"> ${det} · cargó <b style="color:var(--txt)">${esc(c.autoriza||'—')}</b>${c.entregado?` · entregado (${esc(c.entregado_por||'')})`:' · sin retirar'}</small></span>
-      ${esAdmin()?`<button class="btnDel" onclick="cerrarModal();borrarConsumo('${c.id}')">✕</button>`:''}</div>`;}).join('');
+  const body=list.map(c=>{const col=colorTipo(c.producto||c.tipo);
+    const cob=c.precio_cobrado!=null?c.precio_cobrado:c.precio;
+    const det=(c.tipo_movimiento&&c.tipo_movimiento!=='VENTA'?c.tipo_movimiento+' · ':'')+(c.cambio?('upgrade de '+esc(c.cambio)):(cob?money(cob):'sin cargo'));
+    const por=c.creado_por||c.autoriza||'—';
+    const mot=c.motivo?` · motivo: ${esc(c.motivo)}`:'';
+    const area=c.area?` · ${esc(c.area)}`:'';
+    const cant=(c.cantidad&&c.cantidad>1)?(c.cantidad+'× '):'';
+    const bot=c.botellas?` · ${c.botellas} botella${c.botellas>1?'s':''}`:'';
+    return `<div class="repNo${c.anulado?' anulado':''}" style="align-items:center">
+      <span style="min-width:0"><span class="badge" style="border-color:${col};color:${col};background:${col}18">${cant}${esc(c.producto||c.tipo)}</span>
+        ${c.anulado?'<span class="badge b-anulado">ANULADO</span>':''}
+        <small style="color:var(--dim)"> ${det}${area}${bot}<br>cargó <b style="color:var(--txt)">${esc(por)}</b> a las ${hora(c)} · autoriza ${esc(c.autoriza||'—')}${c.entregado?` · entregó ${esc(c.entregado_por||'')} ${c.entregado_at?fmtAR(c.entregado_at):''}`:' · pendiente'}${mot}${c.anulado&&c.motivo_anulacion?` · anulado: ${esc(c.motivo_anulacion)}`:''}</small></span>
+      ${esAdmin()&&!c.anulado?`<button class="btnDel" onclick="cerrarModal();borrarConsumo('${c.id}')">✕</button>`:''}</div>`;}).join('');
   const btns=[];
-  if(esAdmin())btns.push({txt:ICO.tacho+' Eliminar todo el pedido ('+list.length+')',tipo:'dan',fn:()=>borrarPedido(n)});
+  if(esAdmin()&&list.some(c=>!c.anulado))btns.push({txt:ICO.tacho+' Anular todo el pedido ('+list.filter(c=>!c.anulado).length+')',tipo:'dan',fn:()=>borrarPedido(n)});
   btns.push({txt:'Cerrar',tipo:'gho'});
   // la lista scrollea adentro: con un pedido largo los botones quedan igual a la vista
   modal(n, list.length+' consumo'+(list.length!==1?'s':'')+' esta noche',
     `<div style="max-height:46vh;overflow:auto;margin-right:-4px;padding-right:4px">${body}</div>`, btns);
 }
 function borrarConsumo(id){
-  if(!esAdmin())return; const c=consumos.find(x=>x.id===id); if(!c)return;
-  modal('¿Borrar este consumo?',c.nombre+' · '+c.tipo,
-    c.entregado?`<div class="aviso">${ICO.alerta} Ese consumo ya figura <b>entregado</b>: si lo borrás sale del reporte de la noche.</div>`:'',
-    [{txt:'Sí, borrar',tipo:'dan',fn:()=>eliminarConsumos([id])},
+  if(!esAdmin()||esAuditor())return; const c=consumos.find(x=>x.id===id); if(!c||c.anulado)return;
+  modal('¿Anular este consumo?',c.nombre+' · '+(c.producto||c.tipo),
+    (c.entregado?`<div class="aviso">${ICO.alerta} Ya figura <b>entregado</b>. Se anula (no se borra) y queda en el historial.</div>`:'')+
+    `<label>Motivo de anulación (obligatorio)</label><textarea class="motivo" id="motAnula" rows="2" placeholder="Por qué se anula"></textarea>`,
+    [{txt:'Sí, anular',tipo:'dan',mantener:true,accion:()=>{
+        const m=(document.getElementById('motAnula').value||'').trim();
+        if(!m)return alert('El motivo es obligatorio.');
+        cerrarModal(); eliminarConsumos([id],c.nombre,m);
+      }},
      {txt:'Cancelar',tipo:'gho'}]);
 }
 /* Borra de una vez todos los consumos que tiene cargados una persona esta noche.
@@ -1579,18 +1860,22 @@ function borrarConsumo(id){
    Solo admin, igual que el borrado de a uno — la barra no borra, solo entrega. */
 function borrarPedido(nom){
   if(!esAdmin())return;
-  const list=consumos.filter(c=>c.nombre===nom);
+  const list=consumos.filter(c=>c.nombre===nom && !c.anulado);
   if(!list.length)return;
   const ent=list.filter(c=>c.entregado).length;
   const plata=list.reduce((a,c)=>a+(c.precio||0),0);
   const g={}; list.forEach(c=>{ g[c.tipo]=(g[c.tipo]||0)+1; });
   const detalle=Object.entries(g).map(([t,q])=>`<div class="dupIt">${q>1?`<b>${q}×</b> `:''}${esc(t)}</div>`).join('');
-  modal('¿Borrar todo el pedido?', nom+' · '+list.length+' consumo'+(list.length!==1?'s':''),
-    `<div class="dup"><div class="dupTit">SE VA A BORRAR</div>${detalle}
+  modal('¿Anular todo el pedido?', nom+' · '+list.length+' consumo'+(list.length!==1?'s':''),
+    `<div class="dup"><div class="dupTit">SE VA A ANULAR (no se borra)</div>${detalle}
        <div class="dupIt"><small>${plata?'total '+money(plata):'sin cargo'}</small></div></div>
-     ${ent?`<div class="aviso">${ICO.alerta} Ojo: <b>${ent} de ${list.length}</b> ya figuran entregados. Si los borrás salen del reporte y de lo facturado de la noche.</div>`:''}
-     <div class="ayuda">Se saca de la noche. No se puede deshacer.</div>`,
-    [{txt:`Sí, borrar los ${list.length}`,tipo:'dan',fn:()=>eliminarConsumos(list.map(c=>c.id),nom)},
+     ${ent?`<div class="aviso">${ICO.alerta} Ojo: <b>${ent} de ${list.length}</b> ya figuran entregados. Quedan en el historial como anulados.</div>`:''}
+     <label>Motivo de anulación (obligatorio)</label><textarea class="motivo" id="motAnula" rows="2" placeholder="Por qué se anula"></textarea>`,
+    [{txt:`Sí, anular los ${list.length}`,tipo:'dan',mantener:true,accion:()=>{
+        const m=(document.getElementById('motAnula').value||'').trim();
+        if(!m)return alert('El motivo es obligatorio.');
+        cerrarModal(); eliminarConsumos(list.map(c=>c.id),nom,m);
+      }},
      {txt:'Cancelar',tipo:'gho'}]);
 }
 /* Borra los consumos indicados. Va de a lotes de 40 para no armar una URL gigante
@@ -1601,32 +1886,22 @@ function borrarPedido(nom){
    sincronizar() vuelve sin hacer nada y estariamos cantando un ✓ sin haber
    verificado nada. Si el server no devolviera las filas, no inventamos un
    numero: se confia en el OK, igual que hacia el borrado de a uno de siempre. */
-async function eliminarConsumos(ids,nom){
-  if(!esAdmin()||!ids.length)return;
-  aviso('Borrando…','ok');
-  let borrados=0, contadas=true;
+async function eliminarConsumos(ids,nom,motivo){
+  if(!esAdmin()||esAuditor()||!ids.length)return;
+  if(!motivo)return alert('El motivo es obligatorio.');
+  aviso('Anulando…','ok');
   try{
-    for(let i=0;i<ids.length;i+=40){
-      const lote=ids.slice(i,i+40).map(x=>encodeURIComponent(x)).join(',');
-      const r=await api('/rest/v1/consumos?id=in.('+lote+')',
-        {method:'DELETE',headers:{Prefer:'return=representation'}});
-      if(Array.isArray(r))borrados+=r.length; else contadas=false;
-    }
-  }catch(e){ aviso('No se pudo borrar: '+e.message); await sincronizar(); return; }
-  const fuera=new Set(ids);
-  consumos=consumos.filter(c=>!fuera.has(c.id));
-  renderBarraCarga(); renderBarra(); bHint();
-  await sincronizar();
-  // el cartel va al final: sincronizar(), cuando corre bien, limpia el que haya
-  if(contadas && borrados<ids.length) aviso(`Se borraron ${borrados} de ${ids.length} — revisá la lista`);
-  else aviso(ids.length>1?`Pedido de ${nom} borrado (${ids.length}) ✓`:'Borrado ✓','ok');
+    const n=await api('/rest/v1/rpc/anular_consumos',{method:'POST',body:JSON.stringify({p_ids:ids,p_motivo:motivo})});
+    await sincronizar();
+    aviso(ids.length>1?`Pedido de ${nom} anulado (${n||ids.length}) ✓`:'Anulado ✓','ok');
+  }catch(e){ aviso('No se pudo anular: '+e.message); await sincronizar(); }
 }
 /* --- barra: control (entregar) --- */
 let focoNom=null, bSel=new Set(), focoGrupos=[];
 function renderBarra(){
   if(document.getElementById('tab-barraControl').classList.contains('hide') && dominio!=='barra'){}
   const f=(document.getElementById('buscarBarra')?.value||'').trim();
-  const pend=consumos.filter(c=>!c.entregado && (!f||nrm(c.nombre).includes(nrm(f))));
+  const pend=consumos.filter(c=>!c.entregado && !c.anulado && (!f||nrm(c.nombre).includes(nrm(f))));
   const porP={}; pend.forEach(c=>{(porP[c.nombre]=porP[c.nombre]||[]).push(c);});
   const nombres=Object.keys(porP).sort((a,b)=>a.localeCompare(b,'es'));
   const lb=document.getElementById('listaBarra'); if(!lb)return;
@@ -1634,18 +1909,21 @@ function renderBarra(){
     const its=porP[n], cobrar=its.reduce((a,x)=>a+x.precio,0), g={};
     its.forEach(c=>g[c.tipo]=(g[c.tipo]||0)+1);
     const chips=Object.entries(g).map(([t,q])=>{const c=colorTipo(t); return `<span class="chip" style="border-color:${c};color:${c};background:${c}22">${q>1?q+'× ':''}${esc(t)}</span>`;}).join('');
+    const quien=[...new Set(its.map(c=>c.creado_por||c.autoriza).filter(Boolean))].join(', ');
     return `<div class="pCard" data-nombre="${esc(n)}" onclick="abrirFoco(this.dataset.nombre)">
-      <div><div class="nombre">${esc(n)}</div><div class="chips" style="margin-top:6px">${chips}</div></div>
+      <div><div class="nombre">${esc(n)}</div>
+        <div class="meta">${quien?('cargó '+esc(quien)+' · '):''}${hora(its[0])}${metaEvento(its[0])}${its.some(c=>c.motivo)?' · '+esc(its.find(c=>c.motivo).motivo):''}</div>
+        <div class="chips" style="margin-top:6px">${chips}</div></div>
       <div style="display:flex;align-items:center;gap:14px"><div style="text-align:right">
         <div style="font-size:17px;font-weight:800;color:${cobrar>0?'#fb7185':'var(--free)'}">${cobrar>0?money(cobrar):'SIN CARGO'}</div>
         <div style="font-size:11px;color:var(--dim)">${its.length} por entregar</div></div>
         <div style="font-size:24px;color:var(--dim)">›</div></div></div>`;
   }).join('')||`<div class="sinResultados">${f?'Nadie con ese nombre.':'No hay consumos pendientes.'}</div>`;
-  const de=consumos.filter(c=>c.entregado && (!esMultibarra()||c.entregado_por===miBarra)).sort((a,b)=>String(b.entregado_at).localeCompare(String(a.entregado_at)));
+  const de=consumos.filter(c=>c.entregado && !c.anulado && (!esMultibarra()||esAdminOAuditor()||c.entregado_por===miBarra)).sort((a,b)=>String(b.entregado_at).localeCompare(String(a.entregado_at)));
   document.getElementById('barraEntregados').innerHTML=de.length
-    ? `<div class="secTitle">Ya entregados (${de.length})</div>`+de.map(c=>`<div class="repNo" style="display:flex;justify-content:space-between;align-items:center"><span><b>${esc(c.nombre)}</b> · ${esc(c.tipo)} <small style="color:var(--dim)">· ${c.precio?money(c.precio):'sin cargo'}${esAdmin()&&c.entregado_por?' · '+esc(c.entregado_por):''}</small></span><button class="btnUndo" style="flex:none;padding:6px 12px" onclick="deshacerBarra('${c.id}')">${ICO.deshacer}</button></div>`).join('')
+    ? `<div class="secTitle">Ya entregados (${de.length})</div>`+de.map(c=>`<div class="repNo" style="display:flex;justify-content:space-between;align-items:center"><span><b>${esc(c.nombre)}</b> · ${esc(c.producto||c.tipo)} <small style="color:var(--dim)">· ${(c.tipo_movimiento&&c.tipo_movimiento!=='VENTA')?c.tipo_movimiento+' · ':''}${c.precio_cobrado||c.precio?money(c.precio_cobrado!=null?c.precio_cobrado:c.precio):'sin cargo'}${c.creado_por?' · cargó '+esc(c.creado_por):''}${(esAdminOAuditor()||esAdmin())&&c.entregado_por?' · entregó '+esc(c.entregado_por):''}${c.entregado_at?' · '+fmtAR(c.entregado_at):''}${c.motivo?' · '+esc(c.motivo):''}</small></span>${puedeMutar()?`<button class="btnUndo" style="flex:none;padding:6px 12px" onclick="deshacerBarra('${c.id}')">${ICO.deshacer}</button>`:''}</div>`).join('')
     : '';
-  const pend2=consumos.filter(c=>!c.entregado);
+  const pend2=consumos.filter(c=>!c.entregado && !c.anulado);
   document.getElementById('barraTot').innerHTML=`
     <div class="totBox"><b>${pend2.length+de.length}</b><span>consumos</span></div>
     <div class="totBox"><b style="color:var(--ok)">${de.length}</b><span>entregados</span></div>
@@ -1655,7 +1933,7 @@ function renderBarra(){
 function abrirFoco(n){ focoNom=n; bSel=new Set(); pintarFoco(); document.getElementById('foco').classList.remove('hide'); }
 function cerrarFoco(){ document.getElementById('foco').classList.add('hide'); focoNom=null; bSel.clear(); }
 function pintarFoco(){
-  const its=consumos.filter(c=>!c.entregado && c.nombre===focoNom);
+  const its=consumos.filter(c=>!c.entregado && !c.anulado && c.nombre===focoNom);
   document.getElementById('fNom').textContent=focoNom;
   const g={}; its.forEach(c=>{const k=c.tipo+'|'+c.precio+'|'+(c.cambio||'');(g[k]=g[k]||[]).push(c);});
   focoGrupos=Object.values(g);   // guardamos los grupos para bPick por índice (sin interpolar texto)
@@ -1684,6 +1962,7 @@ function bPick(idx,delta){
   pintarFoco();
 }
 async function confirmarBarra(){
+  if(!puedeMutar())return alert('El auditor no puede entregar.');
   const ids=[...bSel]; if(!ids.length)return;
   if(esMultibarra() && !miBarra){ cerrarFoco(); elegirPuesto(); return; }
   try{ await api('/rest/v1/rpc/entregar_consumos',{method:'POST',body:JSON.stringify({p_ids:ids,p_barra:miBarra})});
@@ -1691,6 +1970,7 @@ async function confirmarBarra(){
   }catch(e){ alert('No se pudo: '+e.message); }
 }
 async function deshacerBarra(id){
+  if(!puedeMutar())return;
   try{ const ok=await api('/rest/v1/rpc/desentregar_consumo',{method:'POST',body:JSON.stringify({p_id:id,p_barra:miBarra})});
     if(ok===false)aviso('Eso lo entregó otra barra — no lo podés deshacer'); else await sincronizar();
   }catch(e){ aviso(e.message); }
@@ -1856,7 +2136,7 @@ crearPredictivo(document.getElementById('fNombres'), true);
 
 function pintarQuien(){
   cargarClientes();
-  const rol=esAdmin()?'admin':esMultipuesto()?(miPuesto==='bole'?'boletería':miPuesto==='barra'?'barra':'puesto'):(yo.rol==='barra'?'barra':'boletería');
+  const rol=esAuditor()?'auditor':esAdmin()?'admin':esMultipuesto()?(miPuesto==='bole'?'boletería':miPuesto==='barra'?'barra':'puesto'):(yo.rol==='barra'?'barra':'boletería');
   const puestoVal=miPuesto==='bole'?miEstacion:miPuesto==='barra'?miBarra:'';
   const est=(yo&&yo.rol==='boleteria'&&miEstacion)?` · <b style="color:var(--txt)">${esc(miEstacion)}</b>`
     :(esMultipuesto()&&puestoVal)?` · <b style="color:var(--txt)">${esc(puestoVal)}</b>`
@@ -1889,33 +2169,44 @@ let primerTick=true;
 async function tick(){
   if(!yo)return;
   try{
-    const evs=await api('/rest/v1/eventos?abierto=eq.true&select=*&order=fecha.desc&limit=1');
-    const abierto=evs[0]||null;
-    const cambio=(abierto?abierto.id:null)!==(evento?evento.id:null);
-    if(cambio||primerTick){
-      primerTick=false;
-      evento=abierto;
-      if(evento)entrarModoNoche(); else entrarModoSinNoche();
+    const evs=await api('/rest/v1/eventos?select=*&order=fecha.desc,creado_en.desc&anulado=eq.false');
+    eventos=evs||[];
+    const abierto=eventos.find(e=>e.abierto)||null;
+    if(!eventoFijado){
+      const cambio=(abierto?abierto.id:null)!==(evento?evento.id:null);
+      if(cambio||primerTick){
+        primerTick=false;
+        evento=abierto;
+        if(evento)entrarModoNoche(); else entrarModoSinNoche();
+      }
+    }else if(evento){
+      const fresh=eventos.find(e=>e.id===evento.id);
+      if(fresh)evento=fresh;
+      document.getElementById('evFecha').textContent=(evento.nombre?evento.nombre+' · ':'')+fechaCorta(evento.fecha)+(evento.abierto?'':' · closed');
     }
-    if(evento)await sincronizar();
+    pintarFiltroEvento();
+    if(idsConsulta().length)await sincronizar();
   }catch(e){ /* sin conexión: no rompemos, reintenta al próximo tick */ }
 }
 function entrarModoNoche(){
   document.getElementById('tab-sinNoche').classList.add('hide');
-  document.getElementById('evFecha').textContent='Evento: '+fechaCorta(evento.fecha);
-  document.querySelector('nav').classList.toggle('hide', !esAdmin());   // el personal no ve la nav
-  if(esMultipuesto()) irA(miPuesto==='bole'?'bole':'barra','controlar');
+  document.getElementById('filtroBar').classList.remove('hide');
+  document.getElementById('evFecha').textContent=(evento.nombre?evento.nombre+' · ':'')+fechaCorta(evento.fecha)+(evento.abierto?'':' · closed');
+  document.querySelector('nav').classList.toggle('hide', !(esAdminOAuditor()));
+  if(esAuditor()||esMultipuesto()) irA(esAuditor()?'bole':(miPuesto==='bole'?'bole':'barra'),'controlar');
   else if(yo.rol==='boleteria') irA('bole','controlar');
   else if(yo.rol==='barra') irA('barra','controlar');
-  else irA('bole','cargar');
+  else irA('bole', evento.abierto&&puedeMutar()?'cargar':'controlar');
 }
 function entrarModoSinNoche(){
   items=[]; consumos=[];
   ['tab-carga','tab-bole','tab-barraCarga','tab-barraControl'].forEach(id=>document.getElementById(id).classList.add('hide'));
   document.getElementById('modoToggle').classList.add('hide');
-  document.querySelector('nav').classList.add('hide');
+  document.querySelector('nav').classList.toggle('hide', !esAdminOAuditor());
   document.getElementById('evFecha').textContent='Sin noche abierta';
+  document.getElementById('filtroBar').classList.remove('hide');
   document.getElementById('tab-sinNoche').classList.remove('hide');
+  pintarFiltroEvento();
   renderSinNoche();
 }
 async function renderSinNoche(){
@@ -1923,7 +2214,7 @@ async function renderSinNoche(){
   if(!esAdmin()){
     cont.innerHTML=`<div class="sinBox"><div class="sinIcon"><svg viewBox="0 0 24 24" style="width:54px;height:54px;fill:none;stroke:var(--oro);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></div>
       <div class="sinTit">Todavía no hay una noche abierta</div>
-      <div class="sinSub">Esperá a que un socio la abra.<br>La pantalla se actualiza sola.</div></div>`;
+      <div class="sinSub">${esAuditor()?'Elegí un evento arriba para ver el historial.':'Esperá a que un socio la abra.<br>La pantalla se actualiza sola. También podés elegir una noche anterior en el selector.'}</div></div>`;
     return;
   }
   cont.innerHTML=`<div class="sinBox"><div class="sinIcon"><svg viewBox="0 0 24 24" style="width:54px;height:54px;fill:none;stroke:var(--oro);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></div>
@@ -1936,7 +2227,7 @@ async function renderSinNoche(){
     const lista=await api('/rest/v1/rpc/historico_noches',{method:'POST',body:'{}'});
     document.getElementById('sinHist').innerHTML = lista.length ? lista.map(n=>`
       <button class="histItem" onclick="abrirReporteHistorico('${n.id}',${n.abierto})">
-        <div><div class="histFecha">${fechaLarga(n.fecha)}</div>
+        <div><div class="histFecha">${esc(n.nombre||fechaLarga(n.fecha))}${n.abierto?' <span class="histAbierta">OPEN</span>':''}</div>
         <div class="histSub">${n.personas} anotados · ${n.ingresaron} entraron · ${money(n.recaudado)}</div></div>
         <div class="histFlecha">›</div></button>`).join('')
       : '<div class="repNo"><span style="color:var(--dim)">Todavía no hay noches registradas.</span></div>';
@@ -1953,13 +2244,14 @@ function badges(it){
 function renderCarga(){
   document.getElementById('listaCarga').innerHTML=items.slice(0,15).map(it=>{
     const ing=ingresDe(it),tot=totalDe(it);
-    return `<div class="card${completo(it)?' in':''}">
+    return `<div class="card${completo(it)?' in':''}${it.anulado?' anulado':''}">
       <div class="cardTop">
         <div><div class="nombre">${esc(it.nombre)}</div>
-        <div class="meta">${hora(it)} · autoriza ${esc(it.autoriza)}${ing?` · <b style="color:var(--ok)">${ing}/${tot} adentro</b>`:''}</div></div>
-        <button class="btnDel" onclick="borrar('${it.id}')">✕</button>
+        <div class="meta">${hora(it)}${metaEvento(it)} · cargó ${esc(it.creado_por||it.autoriza)} · autoriza ${esc(it.autoriza)}${ing?` · <b style="color:var(--ok)">${ing}/${tot} adentro</b>`:''}${it.ingreso_at?` · entró ${fmtAR(it.ingreso_at)}`:''}</div></div>
+        ${esAdmin()&&!it.anulado?`<button class="btnDel" onclick="borrar('${it.id}')">✕</button>`:''}
       </div>
-      <div class="badges">${badges(it)}</div>
+      <div class="badges">${badges(it)}${it.anulado?'<span class="badge b-anulado">ANULADO</span>':''}</div>
+      ${it.motivo?`<div class="nota">motivo: ${esc(it.motivo)}</div>`:''}
       ${it.nota?`<div class="nota">${esc(it.nota)}</div>`:''}
     </div>`;
   }).join('')||'<div class="cargando">Todavía no anotaste a nadie.</div>';
@@ -2003,24 +2295,29 @@ function card(it){
       </div>`;}).join('');
     if(!fin)cuerpo+=`<button class="btnTodos" onclick="todos('${it.id}')">Entraron todos juntos (${tot-ing})</button>`;
   }
-  return `<div class="card${fin?' in':''}">
+  return `<div class="card${fin?' in':''}${it.anulado?' anulado':''}">
     <div class="cardTop">
       <div><div class="nombre">${esc(it.nombre)}</div>
-      <div class="meta">${hora(it)} · autoriza <b>${esc(it.autoriza)}</b></div></div>
+      <div class="meta">${hora(it)}${metaEvento(it)} · cargó ${esc(it.creado_por||it.autoriza)} · autoriza <b>${esc(it.autoriza)}</b>${it.ingreso_at?` · entró ${fmtAR(it.ingreso_at)}`:''}</div></div>
       <div style="display:flex;align-items:center;gap:4px">
         ${tot>1?`<div class="pill${fin?' ok':''}">${ing}/${tot}</div>`:''}
-        ${esAdmin()?`<button class="btnDel" onclick="borrar('${it.id}')" title="Borrar">✕</button>`:''}
+        ${esAdmin()&&!it.anulado?`<button class="btnDel" onclick="borrar('${it.id}')" title="Anular">✕</button>`:''}
       </div>
     </div>
-    <div class="badges">${badges(it)}</div>
+    <div class="badges">${badges(it)}${it.anulado?'<span class="badge b-anulado">ANULADO</span>':''}</div>
+    ${it.motivo?`<div class="nota">motivo: ${esc(it.motivo)}</div>`:''}
     ${it.nota?`<div class="nota">${ICO.nota} ${esc(it.nota)}</div>`:''}
-    ${cuerpo}
+    ${it.anulado&&it.motivo_anulacion?`<div class="nota">anulado por ${esc(it.anulado_por||'')} · ${esc(it.motivo_anulacion)}</div>`:''}
+    ${it.anulado?'':cuerpo}
   </div>`;
 }
 
 /* ---------- acciones ---------- */
 async function mover(id,campo,delta){
-  const it=items.find(x=>x.id===id); if(!it)return;
+  if(!puedeMutar())return;
+  const it=items.find(x=>x.id===id); if(!it||it.anulado)return;
+  const ev=eventoDe(it.evento_id)||evento;
+  if(ev && !ev.abierto && !esAdmin())return alert('Esa noche está cerrada.');
   if(delta===1 && !esAdmin() && yo.rol==='boleteria' && !miEstacion){ elegirEstacion(); return; }
   const c=CONDS.find(x=>x.k===campo);
   const prev=it[c.ing];
@@ -2034,25 +2331,32 @@ async function mover(id,campo,delta){
   }catch(e){ it[c.ing]=prev; renderBole(); renderCarga(); aviso('No se pudo marcar: '+e.message); }
 }
 async function todos(id){
-  const it=items.find(x=>x.id===id); if(!it)return;
+  if(!puedeMutar())return;
+  const it=items.find(x=>x.id===id); if(!it||it.anulado)return;
+  const ev=eventoDe(it.evento_id)||evento;
+  if(ev && !ev.abierto && !esAdmin())return alert('Esa noche está cerrada.');
   if(!esAdmin() && yo.rol==='boleteria' && !miEstacion){ elegirEstacion(); return; }
   try{ const r=await api('/rest/v1/rpc/marcar_todos',{method:'POST',body:JSON.stringify({p_anotado:id,p_estacion:miEstacion})});
     Object.assign(it,r.ficha); renderBole(); renderCarga();
   }catch(e){ aviso('No se pudo marcar: '+e.message); }
 }
 function borrar(id){
-  if(!esAdmin())return;
-  const it=items.find(x=>x.id===id); if(!it)return;
+  if(!esAdmin()||esAuditor())return;
+  const it=items.find(x=>x.id===id); if(!it||it.anulado)return;
   const ing=ingresDe(it);
-  modal('¿Borrar este anotado?','Se saca de la lista de esta noche. No se puede deshacer.',
-    `<div class="dup"><div class="dupTit">SE VA A BORRAR</div>
+  modal('¿Anular este anotado?','No se borra: queda marcado como anulado, con autor, fecha y motivo.',
+    `<div class="dup"><div class="dupTit">SE VA A ANULAR</div>
       <div class="dupIt"><b>${esc(it.nombre)}</b> — ${esc(resumenCond(it))}
       <small>lo anotó ${esc(it.autoriza)} a las ${hora(it)}</small></div></div>
-     ${ing?`<div class="aviso">${ICO.alerta} Ojo: ${ing} de ${totalDe(it)} ya figuran como ingresados.</div>`:''}`,
-    [{txt:'Sí, borrar',tipo:'pri',fn:async()=>{
-        try{ await api('/rest/v1/anotados?id=eq.'+id,{method:'DELETE'});
-          items=items.filter(x=>x.id!==id); renderCarga(); renderBole(); aviso('Borrado','ok');
-        }catch(e){ aviso('No se pudo borrar: '+e.message); }
+     ${ing?`<div class="aviso">${ICO.alerta} Ojo: ${ing} de ${totalDe(it)} ya figuran como ingresados.</div>`:''}
+     <label>Motivo de anulación (obligatorio)</label><textarea class="motivo" id="motAnula" rows="2" placeholder="Por qué se anula"></textarea>`,
+    [{txt:'Sí, anular',tipo:'dan',mantener:true,accion:async()=>{
+        const m=(document.getElementById('motAnula').value||'').trim();
+        if(!m)return alert('El motivo es obligatorio.');
+        try{
+          await api('/rest/v1/rpc/anular_anotado',{method:'POST',body:JSON.stringify({p_id:id,p_motivo:m})});
+          cerrarModal(); await sincronizar(); aviso('Anulado','ok');
+        }catch(e){ aviso('No se pudo anular: '+e.message); }
       }},{txt:'Cancelar',tipo:'gho'}]);
 }
 
@@ -2060,10 +2364,13 @@ function borrar(id){
 let dominio='bole', modo='cargar';
 function irA(dom, mod){
   if(!yo)return;
-  if(esMultipuesto()){ dominio=(miPuesto==='bole'?'bole':'barra'); modo='controlar'; }
+  if(esAuditor()){ if(dom)dominio=dom; modo='controlar'; }
+  else if(esMultipuesto()){ dominio=(miPuesto==='bole'?'bole':'barra'); modo='controlar'; }
   else if(yo.rol==='boleteria'){ dominio='bole'; modo='controlar'; }
   else if(yo.rol==='barra'){ dominio='barra'; modo='controlar'; }
   else { if(dom)dominio=dom; if(mod)modo=mod; }
+  if(!puedeMutar()) modo='controlar';
+  if(evento && !evento.abierto && modo==='cargar') modo='controlar';
   const secc = dominio==='bole' ? (modo==='cargar'?'tab-carga':'tab-bole')
                                 : (modo==='cargar'?'tab-barraCarga':'tab-barraControl');
   ['tab-carga','tab-bole','tab-barraCarga','tab-barraControl'].forEach(id=>
@@ -2071,7 +2378,7 @@ function irA(dom, mod){
   document.getElementById('tab-sinNoche').classList.add('hide');
   document.getElementById('nav-bole').classList.toggle('act', dominio==='bole');
   document.getElementById('nav-barra').classList.toggle('act', dominio==='barra');
-  document.getElementById('modoToggle').classList.toggle('hide', !esAdmin());
+  document.getElementById('modoToggle').classList.toggle('hide', !esAdmin() || (evento&&!evento.abierto));
   document.getElementById('mCargar').classList.toggle('act', modo==='cargar');
   document.getElementById('mControlar').classList.toggle('act', modo==='controlar');
   if(secc==='tab-bole')renderBole();
