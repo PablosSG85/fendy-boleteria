@@ -942,8 +942,8 @@ function renderReporte(rep,opts){
 
   h+=`<div class="repSec">Por socio${rep.atribucion_confiable?'':' (referencial)'}</div>
     <div style="overflow-x:auto"><table class="repTable">
-      <thead><tr><th>Socio</th><th>Cargó</th><th>Entró</th><th>Free</th><th>S/Rec</th><th>Paga</th><th>Recaudó</th></tr></thead>
-      <tbody>${soc.map(s=>`<tr><td><b>${esc(s.socio)}</b></td><td>${s.personas}</td><td>${s.entraron}</td><td>${s.free}</td><td>${s.sinrec}</td><td>${s.pagan}</td><td class="dinero">${money(s.recaudado)}</td></tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--dim)">Sin datos</td></tr>'}</tbody></table></div>`;
+      <thead><tr><th>Socio</th><th>Cargados</th><th>Entraron</th><th>Pagaron</th><th>Free</th><th>Ext</th><th>S/Rec</th><th>Recaudó</th></tr></thead>
+      <tbody>${soc.map(s=>{const d=socioDesglose(s);return `<tr><td><b>${esc(s.socio)}</b></td><td>${s.personas}</td><td>${s.entraron}</td><td>${d.pagaron}</td><td>${d.free}</td><td>${d.ext}</td><td>${d.sinrec}</td><td class="dinero">${money(s.recaudado)}</td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--dim)">Sin datos</td></tr>'}</tbody></table></div>`;
 
   // ===== BARRA / CONSUMOS =====
   const B=rep.barra;
@@ -1022,6 +1022,12 @@ function confirmarCerrar(){
     {txt:'Cancelar',tipo:'gho'}]);
 }
 function cerrarReporte(){ document.getElementById('reporte').classList.remove('show'); }
+// Por socio: lo que ENTRÓ, separado por tipo (entraron = pagaron + free + ext + sin rec).
+// Un reporte guardado antes de este cambio no trae esos campos: se muestra «?» en vez de inventar.
+function socioDesglose(s){
+  const v=k=>(s[k]===undefined||s[k]===null)?'?':s[k];
+  return {pagaron:v('pagaron'),free:v('free_entraron'),ext:v('ext_entraron'),sinrec:v('sinrec_entraron')};
+}
 function reporteTexto(rep){
   const t=rep.totales, c=rep.por_condicion, r=rep.ranking, L=[];
   L.push(`🎫 FENDY · CIERRE ${fechaLarga(rep.fecha).toUpperCase()}`);
@@ -1034,7 +1040,8 @@ function reporteTexto(rep){
   L.push(`FREE: ${c.free.entraron}/${c.free.anotados}${c.sinrec.anotados>0?` · SIN REC: ${c.sinrec.entraron}/${c.sinrec.anotados}`:''} · EXT: ${c.ext.entraron}/${c.ext.anotados} · PAGAN: ${c.pago.entraron}/${c.pago.anotados}`);
   if(!rep.atribucion_confiable){ L.push(''); L.push('⚠️ Datos por socio de esta noche no confiables (bug corregido).'); }
   L.push(''); L.push('POR SOCIO' + (rep.atribucion_confiable?'':' (referencial)'));
-  (rep.por_socio||[]).forEach(s=>L.push(`• ${s.socio}: ${s.personas} cargados, ${s.entraron} entraron, ${s.free} free, ${money(s.recaudado)}`));
+  (rep.por_socio||[]).forEach(s=>{ const d=socioDesglose(s);
+    L.push(`• ${s.socio}: ${s.personas} cargados · ${s.entraron} entraron · ${d.pagaron} pagaron · ${d.free} free${d.ext?` · ${d.ext} ext`:''}${d.sinrec?` · ${d.sinrec} sin rec`:''} · ${money(s.recaudado)}`); });
   if(r.mas_recaudado){ L.push(''); L.push(`🏆 Más invitados: ${r.mas_invitados?r.mas_invitados.socio:'—'} · 💰 Más recaudó: ${r.mas_recaudado.socio} (${money(r.mas_recaudado.valor)})`); }
   const B=rep.barra;
   if(B && B.totales && B.totales.items>0){
