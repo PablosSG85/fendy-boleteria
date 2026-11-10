@@ -802,19 +802,47 @@ function pedirNuevaClave(){
       }},{txt:'Cancelar',tipo:'gho'}]);
 }
 function hoyISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+// Abrir la noche (Pablo, 10/11/2026): el cierre es automático a las 7 de la mañana, la apertura es a mano.
+// Al entrar sin noche abierta, a un admin lo primero que se le pide es abrirla y elegir el día.
+function _isoDe(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function _diaTxt(iso){ return new Date(iso+'T12:00').toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'}); }
+function opcionesDeNoche(){
+  const hoy=new Date(); hoy.setHours(12,0,0,0);
+  const prox=dow=>{ const d=new Date(hoy); d.setDate(d.getDate()+((dow-d.getDay()+7)%7)); return _isoDe(d); };
+  const ops=[{iso:_isoDe(hoy),txt:'Hoy'}];
+  // De madrugada (antes de las 7) la noche que sigue es la que empezó ayer.
+  if(new Date().getHours()<7){ const ay=new Date(hoy); ay.setDate(ay.getDate()-1); ops.unshift({iso:_isoDe(ay),txt:'Anoche',madrugada:true}); }
+  [[5,'Viernes'],[6,'Sábado'],[0,'Domingo']].forEach(([dow,n])=>{ const iso=prox(dow); if(!ops.some(o=>o.iso===iso))ops.push({iso,txt:n}); });
+  return ops.sort((a,b)=>a.iso<b.iso?-1:1);
+}
+function _elegirNoche(iso){
+  document.getElementById('nfecha').value=iso;
+  document.querySelectorAll('#nopciones .chip').forEach(b=>b.classList.toggle('sel',b.dataset.iso===iso));
+  document.getElementById('nfechaTxt').textContent='Vas a abrir la noche del '+_diaTxt(iso);
+}
 function abrirNoche(){
   if(!esAdmin())return;
-  modal('Abrir una noche','Elegí la fecha del evento. Aunque sea la madrugada del domingo, usá la fecha del sábado.',
-    `<label>Fecha del evento</label><input type="date" id="nfecha" value="${hoyISO()}">`,
+  const ops=opcionesDeNoche();
+  // Por defecto: de madrugada, anoche; si no, el próximo sábado.
+  const def=(ops.find(o=>o.madrugada)||ops.find(o=>new Date(o.iso+'T12:00').getDay()===6)||ops[0]).iso;
+  modal('Abrir la noche','¿Qué día vamos a abrir? Elegí el día del evento: aunque se abra de madrugada, va el día que empezó la noche.',
+    `<div class="chips" id="nopciones" style="margin-bottom:12px">${ops.map(o=>
+       `<button type="button" class="chip" data-iso="${o.iso}" onclick="_elegirNoche('${o.iso}')">${o.txt} ${new Date(o.iso+'T12:00').toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}</button>`).join('')}</div>
+     <label>Otra fecha</label><input type="date" id="nfecha" value="${def}" onchange="_elegirNoche(this.value)">
+     <div id="nfechaTxt" style="margin-top:10px;font-weight:800;color:var(--oroClaro);text-transform:none"></div>`,
     [{txt:'Abrir esta noche',tipo:'pri',mantener:true,accion:async()=>{
         const f=document.getElementById('nfecha').value;
         if(!/^\d{4}-\d{2}-\d{2}$/.test(f))return alert('Elegí una fecha.');
+        const ayer=(()=>{const d=new Date();d.setDate(d.getDate()-1);return _isoDe(d);})();
+        const madrugadaDeAyer=new Date().getHours()<7 && f===ayer;
+        if(f<hoyISO() && !madrugadaDeAyer && !confirm('El '+_diaTxt(f)+' ya pasó. Si la abrís, se va a cerrar sola a las 7 de la mañana. ¿Abrirla igual?'))return;
         try{
           await api('/rest/v1/eventos',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},
             body:JSON.stringify({fecha:f,nombre:'Evento '+f,abierto:true})});
-          cerrarModal(); await tick(); aviso('Noche abierta ✓','ok');
+          cerrarModal(); await tick(); aviso('Noche del '+_diaTxt(f)+' abierta ✓','ok');
         }catch(e){alert('No se pudo abrir: '+e.message);}
-      }},{txt:'Cancelar',tipo:'gho'}]);
+      }},{txt:'Ahora no',tipo:'gho'}]);
+  _elegirNoche(def);
 }
 
 /* ---------- modal ---------- */
@@ -1014,7 +1042,7 @@ function confirmarCerrar(){
         const rep=await api('/rest/v1/rpc/reporte_noche',{method:'POST',
           body:JSON.stringify({p_evento:evento.id,p_cerrar:true})});
         repActual=rep;
-        evento=null; entrarModoSinNoche();
+        evento=null; entrarModoSinNoche(true);
         renderReporte(rep,{cerrada:true});
         aviso('Noche cerrada ✓','ok');
       }catch(e){ alert('No se pudo cerrar: '+e.message); }
@@ -1900,9 +1928,12 @@ async function tick(){
     const abierto=evs[0]||null;
     const cambio=(abierto?abierto.id:null)!==(evento?evento.id:null);
     if(cambio||primerTick){
+      const alEntrar=primerTick;
       primerTick=false;
       evento=abierto;
-      if(evento)entrarModoNoche(); else entrarModoSinNoche();
+      // La apertura se pide sólo al entrar a la app: si la noche se cierra (sola a las 7 o la cierra otro admin)
+      // con la app abierta, no se le salta la ventana encima a nadie.
+      if(evento)entrarModoNoche(); else entrarModoSinNoche(!alEntrar);
     }
     if(evento)await sincronizar();
   }catch(e){ /* sin conexión: no rompemos, reintenta al próximo tick */ }
@@ -1916,7 +1947,7 @@ function entrarModoNoche(){
   else if(yo.rol==='barra') irA('barra','controlar');
   else irA('bole','cargar');
 }
-function entrarModoSinNoche(){
+function entrarModoSinNoche(sinPedirApertura){
   items=[]; consumos=[];
   ['tab-carga','tab-bole','tab-barraCarga','tab-barraControl'].forEach(id=>document.getElementById(id).classList.add('hide'));
   document.getElementById('modoToggle').classList.add('hide');
@@ -1924,6 +1955,8 @@ function entrarModoSinNoche(){
   document.getElementById('evFecha').textContent='Sin noche abierta';
   document.getElementById('tab-sinNoche').classList.remove('hide');
   renderSinNoche();
+  if(esAdmin() && !sinPedirApertura && !document.getElementById('reporte').classList.contains('show')
+     && document.getElementById('modal').classList.contains('hide')) abrirNoche();
 }
 async function renderSinNoche(){
   const cont=document.getElementById('tab-sinNoche');
@@ -1935,7 +1968,7 @@ async function renderSinNoche(){
   }
   cont.innerHTML=`<div class="sinBox"><div class="sinIcon"><svg viewBox="0 0 24 24" style="width:54px;height:54px;fill:none;stroke:var(--oro);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></div>
       <div class="sinTit">No hay ninguna noche abierta</div>
-      <div class="sinSub">Abrí una para empezar a anotar.</div></div>
+      <div class="sinSub">La noche se cierra sola a las 7 de la mañana. Abrí la próxima eligiendo el día.</div></div>
     <button class="btnMain" onclick="abrirNoche()"><svg class="ic" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg> Abrir una noche</button>
     <div class="repSec">Noches anteriores</div>
     <div id="sinHist"><div class="cargando">Cargando…</div></div>`;
